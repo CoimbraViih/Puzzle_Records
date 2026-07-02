@@ -6,16 +6,16 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 ---
 
-## M0 — Scaffolding
+## M0 — Scaffolding ✅ (código pronto, deploy pendente)
 
 **Objetivo**: base do projeto pronta para deploy contínuo.
 
-- Projeto Next.js + TypeScript + Tailwind + shadcn/ui.
-- Projeto Supabase criado (Postgres + Auth + Storage).
-- Deploy inicial (vazio) na Vercel.
-- Variáveis de ambiente documentadas: OpenAI, Zernio, Google Drive, Supabase, Resend.
+- [x] Projeto Next.js + TypeScript + Tailwind + shadcn/ui — dark, identidade verde-limão `#96DB12`.
+- [x] Cliente Supabase isolado (`lib/supabase/client.ts` e `server.ts`) e `supabase/config.toml` local.
+- [x] Variáveis de ambiente documentadas em `.env.example`: OpenAI, Zernio, Google Drive, Supabase, Resend.
+- [ ] Deploy inicial na Vercel e link do projeto Supabase — passos manuais documentados em [docs/DEPLOY.md](docs/DEPLOY.md) (exigem login interativo, não automatizáveis).
 
-**Pronto para avançar quando**: app "hello world" acessível em produção na Vercel, conectado ao Supabase.
+**Pronto para avançar quando**: app "hello world" acessível em produção na Vercel, conectado ao Supabase. *(Código commitado e pushado para `main`; falta rodar os passos de `docs/DEPLOY.md` para validar em produção.)*
 
 ## M1 — Login e multi-usuário
 
