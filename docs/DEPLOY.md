@@ -88,3 +88,23 @@ A página inicial deve mostrar "Supabase: conectado" quando as chaves estiverem 
 
 App "hello world" acessível em produção na Vercel, conectado ao Supabase — validado
 visualmente pelo status de conexão na página inicial.
+
+## Pós-M1: aplicar a migration e criar o primeiro admin
+
+1. Com o projeto já linkado (`npx supabase link --project-ref <seu-project-ref>`,
+   passo já documentado acima), aplique a migration:
+   ```
+   npx supabase db push
+   ```
+2. Configure `NEXT_PUBLIC_SITE_URL` no `.env.local` e nas env vars da Vercel
+   com a URL real do deploy (ex: `https://puzzle-records-agent.vercel.app`).
+3. Bootstrap do primeiro admin — como não existe cadastro público, o primeiro
+   usuário precisa ser criado manualmente uma única vez:
+   - No dashboard do Supabase: **Authentication > Users > Add user**, crie o
+     usuário com e-mail e senha.
+   - No **SQL Editor**, rode (troque o e-mail):
+     ```sql
+     update public.profiles set role = 'admin' where email = 'seu-email@puzzlerecords.com';
+     ```
+   - A partir daí, esse admin consegue convidar os demais usuários direto
+     pela tela `/admin/usuarios` do painel.
