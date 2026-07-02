@@ -75,11 +75,23 @@ export async function updateSession(request: NextRequest) {
   const role = (profile?.role ?? "equipe_conteudo") as Role;
 
   if (pathname === "/" || pathname === "/login") {
-    return NextResponse.redirect(new URL(ROLE_HOME[role], request.url));
+    const redirectResponse = NextResponse.redirect(
+      new URL(ROLE_HOME[role], request.url)
+    );
+    response.cookies
+      .getAll()
+      .forEach((cookie) => redirectResponse.cookies.set(cookie));
+    return redirectResponse;
   }
 
   if (!roleAllowsRoute(role, pathname) && !isPublicRoute(pathname)) {
-    return NextResponse.redirect(new URL(ROLE_HOME[role], request.url));
+    const redirectResponse = NextResponse.redirect(
+      new URL(ROLE_HOME[role], request.url)
+    );
+    response.cookies
+      .getAll()
+      .forEach((cookie) => redirectResponse.cookies.set(cookie));
+    return redirectResponse;
   }
 
   return response;

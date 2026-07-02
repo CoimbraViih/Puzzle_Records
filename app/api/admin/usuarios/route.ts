@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
   const { error } = await serviceClient.auth.admin.inviteUserByEmail(email, {
     data: { role },
-    redirectTo: `${siteUrl}/auth/definir-senha`,
+    redirectTo: `${siteUrl}/auth/confirm?next=/auth/definir-senha`,
   });
 
   if (error) {
