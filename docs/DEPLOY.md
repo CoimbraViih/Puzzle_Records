@@ -5,6 +5,15 @@ este repositório às contas Vercel e Supabase já existentes. Nenhum desses com
 foi executado pelo agente — todos exigem login interativo (OAuth no navegador) que
 não pode ser completado numa sessão não-interativa.
 
+## 0. Enviar o código para o GitHub
+
+O agente criou todos os commits do M0 localmente, mas **não fez push** — isso exige sua
+confirmação. Antes de importar o repositório na Vercel (passo 3), rode:
+
+```bash
+git push -u origin master
+```
+
 ## 1. Instalar as CLIs (opcional)
 
 Não é necessário instalar globalmente — os comandos abaixo usam `npx`, que baixa a
