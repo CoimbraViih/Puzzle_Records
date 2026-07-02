@@ -1,0 +1,81 @@
+# DEPLOY.md — Conectar Vercel e Supabase (M0)
+
+Este documento reúne os comandos que **você** precisa rodar manualmente para linkar
+este repositório às contas Vercel e Supabase já existentes. Nenhum desses comandos
+foi executado pelo agente — todos exigem login interativo (OAuth no navegador) que
+não pode ser completado numa sessão não-interativa.
+
+## 1. Instalar as CLIs (opcional)
+
+Não é necessário instalar globalmente — os comandos abaixo usam `npx`, que baixa a
+versão mais recente sob demanda. Se preferir instalar globalmente:
+
+```bash
+npm i -g vercel supabase
+```
+
+## 2. Supabase — login e link
+
+```bash
+npx supabase login
+npx supabase link --project-ref <seu-project-ref>
+```
+
+Onde encontrar o `<project-ref>`: no [dashboard do Supabase](https://supabase.com/dashboard),
+abra o projeto → **Project Settings** → **General** → campo "Reference ID".
+
+Isso conecta a pasta `supabase/` (já inicializada neste repo com `supabase init`) ao
+seu projeto remoto, permitindo rodar migrations a partir do M2 em diante.
+
+## 3. Vercel — link do projeto
+
+Opção A (recomendada para o primeiro deploy) — importar direto pelo dashboard:
+
+1. Acesse [vercel.com/new](https://vercel.com/new).
+2. Importe o repositório `CoimbraViih/Puzzle_Records` do GitHub.
+3. A Vercel detecta Next.js automaticamente — não é necessário configurar build command.
+
+Opção B — via CLI:
+
+```bash
+npx vercel login
+npx vercel link
+```
+
+## 4. Configurar variáveis de ambiente na Vercel
+
+No dashboard da Vercel: **Project Settings** → **Environment Variables**.
+
+Adicione cada uma das chaves listadas em [`.env.example`](../.env.example), usando os
+mesmos nomes:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (reservada — não usada até um milestone futuro que precise dela)
+- `OPENAI_API_KEY`
+- `ZERNIO_API_KEY`
+- `GOOGLE_DRIVE_CLIENT_ID`
+- `GOOGLE_DRIVE_CLIENT_SECRET`
+- `GOOGLE_DRIVE_REFRESH_TOKEN`
+- `GOOGLE_DRIVE_FOLDER_ID`
+- `RESEND_API_KEY`
+
+## 5. Rodar localmente
+
+```bash
+cp .env.example .env.local
+```
+
+Preencha `.env.local` com os valores reais (Supabase URL e anon key você encontra em
+**Project Settings** → **API** no dashboard do Supabase). Depois:
+
+```bash
+npm run dev
+```
+
+A página inicial deve mostrar "Supabase: conectado" quando as chaves estiverem corretas.
+
+## Critério de pronto do M0
+
+App "hello world" acessível em produção na Vercel, conectado ao Supabase — validado
+visualmente pelo status de conexão na página inicial.
