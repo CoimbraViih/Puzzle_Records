@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080">
+  <!-- Logo Puzzle Records — recriação vetorial a partir da foto de perfil @puzzlerecordss -->
+  <rect width="1080" height="1080" fill="#0a0a0a"/>
+
+  <!-- quadrado verde base (4 peças de puzzle) -->
+  <g fill="#96DB12">
+    <rect x="140" y="190" width="788" height="788" rx="8"/>
+    <!-- tab superior (peça direita, para cima) -->
+    <rect x="704" y="140" width="60" height="60"/>
+    <circle cx="734" cy="150" r="52"/>
+    <!-- tab esquerda (para fora) -->
+    <rect x="90" y="362" width="60" height="60"/>
+    <circle cx="100" cy="392" r="48"/>
+    <!-- tab direita inferior (para fora) -->
+    <rect x="918" y="760" width="60" height="60"/>
+    <circle cx="968" cy="790" r="48"/>
+  </g>
+
+  <!-- encaixes (recortes pretos) -->
+  <g fill="#0a0a0a">
+    <rect x="310" y="190" width="54" height="20"/>
+    <circle cx="337" cy="248" r="52"/>
+    <rect x="908" y="352" width="20" height="50"/>
+    <circle cx="852" cy="377" r="48"/>
+    <rect x="712" y="958" width="54" height="20"/>
+    <circle cx="739" cy="908" r="52"/>
+    <rect x="140" y="758" width="20" height="50"/>
+    <circle cx="216" cy="783" r="48"/>
+  </g>
+
+  <!-- linhas de separação das peças -->
+  <rect x="527" y="190" width="14" height="788" fill="#0a0a0a"/>
+  <rect x="140" y="577" width="788" height="14" fill="#0a0a0a"/>
+
+  <!-- monograma "P" (hexágono + haste) -->
+  <g stroke="#0a0a0a" stroke-width="44" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 549 352 L 668 420 L 668 552 L 549 620 L 430 552 L 430 420 Z"/>
+    <line x1="430" y1="486" x2="430" y2="742"/>
+  </g>
+</svg>
