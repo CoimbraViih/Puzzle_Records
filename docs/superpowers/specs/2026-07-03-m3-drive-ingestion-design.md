@@ -32,14 +32,15 @@ Conteúdo entra no sistema sem intervenção manual: a equipe solta mídia + fat
    a. Baixa e faz `JSON.parse` do metadado. Erro de parse → grava `drive_ingestions` como `erro` com a mensagem, não cria post, não move os arquivos (ficam na pasta para a equipe corrigir e ficam elegíveis a nova tentativa, já que não foram marcados como processados).
    b. Baixa a mídia e sobe para o bucket `posts-media` do Supabase Storage.
    c. Resolve `artist_id` (match por `name`/`handle`) e `social_account_id` (match por `handle`) a partir do texto do JSON. Sem match → campo fica `null` e `ingestion_warning` é preenchido com uma mensagem legível (ex.: `"artista não encontrado: MC Fulano"`).
-   d. Insere o post: `status = 'pendente'`, `post_type` do JSON, `template = null`, `headline = null`, `caption = null`, `media_url`/`media_type` da mídia enviada.
+   d. Insere o post: `status = 'pendente'`, `post_type`/`source_fact`/`track_name` do JSON, `template = null`, `headline = null`, `caption = null`, `media_url`/`media_type` da mídia enviada.
    e. Marca a linha correspondente em `drive_ingestions` como `processado` e move os 2 arquivos originais para `Processados/` no Drive.
 
 ## Modelo de dados (migration `0003_drive_ingestion.sql`)
 
 - `posts.status`: adicionar `'pendente'` ao `check` existente (`rascunho`, `pendente_aprovacao`, `aprovado`, `rejeitado`, `pendente`).
-- `posts.social_account_id`, `posts.template`, `posts.headline`, `posts.caption`: tornar `nullable` (hoje `NOT NULL`). `post_type` continua `NOT NULL` (vem do JSON no momento da criação).
+- `posts.social_account_id`, `posts.template`, `posts.headline`, `posts.caption`, `posts.created_by`: tornar `nullable` (hoje `NOT NULL`) — um post ingerido pelo Drive não tem autor humano nem esses campos definidos ainda. `post_type` continua `NOT NULL` (vem do JSON no momento da criação).
 - Novo campo `posts.ingestion_warning text` (nullable) — mensagem de aviso quando artista/conta social do M3 não batem com nenhum registro.
+- Novos campos `posts.source_fact text` e `posts.track_name text` (nullable) — guardam o "fato" e a "música" do JSON de metadado. Sem esses campos o M4 não teria a partir de quê gerar a manchete/legenda; `source_fact` é a matéria-prima que a OpenAI vai usar, `track_name` é a música a taggear no post de lançamento (regra do guia de estilo).
 - Nova tabela `drive_ingestions`: `id uuid pk`, `drive_file_id text unique not null`, `post_id uuid references posts(id)` (nullable — fica null em caso de erro antes de criar o post), `status text check (status in ('processado','erro'))`, `error_message text`, `created_at timestamptz default now()`.
 - RLS em `drive_ingestions`: leitura restrita a admin (log técnico, não precisa aparecer para outros papéis); sem policy de insert/update para usuários — só o service role (usado pela rota de cron) escreve.
 
