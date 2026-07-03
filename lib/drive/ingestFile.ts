@@ -133,9 +133,16 @@ export async function ingestFilePair(
     return;
   }
 
-  await supabase
+  const { error: ingestionInsertError } = await supabase
     .from("drive_ingestions")
     .insert({ drive_file_id: pair.media.id, post_id: post.id, status: "processado" });
+
+  if (ingestionInsertError) {
+    console.error(
+      "Falha ao registrar drive_ingestions 'processado' (post já existe, risco de duplicar se o move também falhar):",
+      ingestionInsertError
+    );
+  }
 
   try {
     await moveToProcessed(drive, pair.media.id, processedFolderId, rootFolderId);
