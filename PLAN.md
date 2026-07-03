@@ -28,15 +28,17 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 **Pronto para avançar quando**: os 3 papéis conseguem logar e são redirecionados/restritos corretamente. *(Código commitado na `main`; falta rodar o checklist manual de `docs/plans/2026-07-02-m1-login-multiusuario.md` — Task 12 — contra um projeto Supabase linkado: aplicar a migration, criar o primeiro admin e testar um convite real ponta a ponta.)*
 
-## M2 — Modelo de dados + Kanban manual
+## M2 — Modelo de dados + Kanban manual ✅ (código pronto, checklist manual pendente)
 
 **Objetivo**: validar o fluxo de aprovação antes de plugar IA e integrações.
 
-- Tabelas: contas sociais, artistas, posts, templates, status.
-- Fila de aprovação em Kanban (colunas por status) com CRUD manual — post criado à mão no painel, sem IA/Drive ainda.
-- Aprovar / editar / rejeitar funcionando ponta a ponta.
+- [x] Tabelas: `artists`, `social_accounts`, `posts` — com RLS por papel (`equipe_conteudo` só cria/edita os próprios posts em rascunho/rejeitado; `aprovador` só decide posts pendentes; `admin` acesso total). Bucket privado `posts-media` no Supabase Storage.
+- [x] Fila de aprovação em Kanban (4 colunas: rascunho/pendente de aprovação/aprovado/rejeitado) com CRUD manual via `PostFormDialog` — post criado à mão no painel com upload real de mídia, sem IA/Drive ainda.
+- [x] Aprovar / editar / rejeitar funcionando ponta a ponta, com botões de ação por papel (sem drag-and-drop).
+- [x] CRUD de artistas (`/admin/artistas`) e contas sociais (`/admin/contas`), só admin.
+- [x] Revisão de código pós-implementação (11 tasks + revisão final da branch) — corrigido: RLS bloqueava `equipe_conteudo` de editar um post rejeitado sem reenviar (o `WITH CHECK` da política de update só aceitava `rascunho`/`pendente_aprovacao` como status alvo; adicionado `rejeitado`, mantendo `aprovado` de fora para preservar a trava de auto-aprovação); `updatePost`/`rejectPost` passaram a detectar quando o RLS bloqueia a escrita silenciosamente (checagem de zero linhas afetadas); `deleteArtist`/`deleteSocialAccount` passaram a logar erros em vez de ignorá-los.
 
-**Pronto para avançar quando**: um post criado manualmente percorre todo o ciclo de status no Kanban.
+**Pronto para avançar quando**: um post criado manualmente percorre todo o ciclo de status no Kanban. *(Código commitado na `main`; falta rodar o checklist manual de `docs/plans/2026-07-02-m2-kanban-manual.md` — Task 13 — contra um projeto Supabase linkado: aplicar a migration `0002_content_model.sql`, cadastrar artista/conta social, e testar o ciclo completo de aprovação com os 3 papéis.)*
 
 ## M3 — Ingestão do Google Drive
 
