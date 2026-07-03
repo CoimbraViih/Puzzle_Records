@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { rejectPost, type PostFormState } from "@/lib/posts/actions";
@@ -14,11 +14,17 @@ export function RejectDialog({ postId }: { postId: string }) {
     initialState
   );
 
-  useEffect(() => {
+  // Fecha o modal quando a rejeição é confirmada com sucesso. Ajuste de
+  // estado durante a renderização (guardado por `handledState`) em vez de
+  // useEffect, seguindo o padrão recomendado pelo React para reagir a uma
+  // mudança de state sem side effect assíncrono.
+  const [handledState, setHandledState] = useState(state);
+  if (state !== handledState) {
+    setHandledState(state);
     if (state?.success) {
       setOpen(false);
     }
-  }, [state]);
+  }
 
   return (
     <>

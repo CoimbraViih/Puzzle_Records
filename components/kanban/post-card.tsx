@@ -72,8 +72,9 @@ export function PostCard({
       </div>
 
       {post.media_signed_url && post.media_type === "image" && (
-        // eslint-disable-next-line @next/next/no-img-element -- URL assinada
-        // temporária do Storage, não faz sentido no otimizador de imagem do Next.
+        // URL assinada temporária do Storage — não faz sentido no otimizador
+        // de imagem do Next (expira e muda a cada carregamento da página).
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={post.media_signed_url}
           alt={post.headline}

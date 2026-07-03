@@ -23,6 +23,10 @@ export default function UsuariosPage() {
   }
 
   useEffect(() => {
+    // Busca inicial da lista ao montar a página — não há Server Component
+    // aqui (a lista é atualizada via fetch/refetch após convite), então o
+    // carregamento no mount é intencional.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadUsers();
   }, []);
 
