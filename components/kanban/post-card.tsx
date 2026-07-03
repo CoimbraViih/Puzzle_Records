@@ -66,9 +66,11 @@ export function PostCard({
         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
           {POST_TYPE_LABELS[post.post_type]}
         </span>
-        <span className="text-xs text-muted-foreground">
-          Template {post.template}
-        </span>
+        {post.template && (
+          <span className="text-xs text-muted-foreground">
+            Template {post.template}
+          </span>
+        )}
       </div>
 
       {post.media_signed_url && post.media_type === "image" && (
@@ -77,7 +79,7 @@ export function PostCard({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={post.media_signed_url}
-          alt={post.headline}
+          alt={post.headline ?? "Mídia aguardando manchete da IA (M4)"}
           className="h-32 w-full rounded-md object-cover"
         />
       )}
@@ -89,22 +91,33 @@ export function PostCard({
         />
       )}
 
-      <p className="text-sm font-semibold text-foreground">{post.headline}</p>
+      <p className="text-sm font-semibold text-foreground">
+        {post.headline ?? "Aguardando manchete da IA (M4)"}
+      </p>
       <p className="line-clamp-3 text-xs text-muted-foreground">
-        {post.caption}
+        {post.caption ?? "Aguardando legenda da IA (M4)"}
       </p>
 
       <p className="text-xs text-muted-foreground">
-        {SOCIAL_NETWORK_LABELS[
-          post.social_account.network as keyof typeof SOCIAL_NETWORK_LABELS
-        ] ?? post.social_account.network}{" "}
-        — {post.social_account.display_name}
+        {post.social_account
+          ? `${
+              SOCIAL_NETWORK_LABELS[
+                post.social_account.network as keyof typeof SOCIAL_NETWORK_LABELS
+              ] ?? post.social_account.network
+            } — ${post.social_account.display_name}`
+          : "Conta social não vinculada"}
         {post.artist && ` · ${post.artist.name} (${post.artist.handle})`}
       </p>
 
       {post.status === "rejeitado" && post.rejection_reason && (
         <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
           Motivo: {post.rejection_reason}
+        </p>
+      )}
+
+      {post.ingestion_warning && (
+        <p className="rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-600 dark:text-amber-400">
+          {post.ingestion_warning}
         </p>
       )}
 

@@ -23,7 +23,7 @@ export function KanbanBoard({
   socialAccounts: SocialAccount[];
 }) {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
       {POST_STATUSES.map((status) => (
         <div
           key={status}
