@@ -60,13 +60,13 @@ mesmos nomes:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (reservada — não usada até um milestone futuro que precise dela)
+- `SUPABASE_SERVICE_ROLE_KEY` (usada pela rota de convite de admin `/api/admin/usuarios` e pelo cron de ingestão `/api/cron/drive-ingest`)
+- `NEXT_PUBLIC_SITE_URL`
 - `OPENAI_API_KEY`
 - `ZERNIO_API_KEY`
-- `GOOGLE_DRIVE_CLIENT_ID`
-- `GOOGLE_DRIVE_CLIENT_SECRET`
-- `GOOGLE_DRIVE_REFRESH_TOKEN`
+- `GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY`
 - `GOOGLE_DRIVE_FOLDER_ID`
+- `CRON_SECRET`
 - `RESEND_API_KEY`
 
 ## 5. Rodar localmente
