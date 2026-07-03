@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/drive-ingest",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/generate-copy",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
