@@ -1,4 +1,5 @@
 export const POST_STATUSES = [
+  "pendente",
   "rascunho",
   "pendente_aprovacao",
   "aprovado",
@@ -8,6 +9,7 @@ export const POST_STATUSES = [
 export type PostStatus = (typeof POST_STATUSES)[number];
 
 export const POST_STATUS_LABELS: Record<PostStatus, string> = {
+  pendente: "Pendente (Drive)",
   rascunho: "Rascunho",
   pendente_aprovacao: "Pendente de aprovação",
   aprovado: "Aprovado",
@@ -37,17 +39,22 @@ export type MediaType = (typeof MEDIA_TYPES)[number];
 export interface Post {
   id: string;
   artist_id: string | null;
-  social_account_id: string;
-  template: PostTemplate;
+  social_account_id: string | null;
+  template: PostTemplate | null;
   post_type: PostType;
-  headline: string;
-  caption: string;
+  headline: string | null;
+  caption: string | null;
   media_url: string;
   media_type: MediaType;
   status: PostStatus;
   scheduled_at: string | null;
   rejection_reason: string | null;
-  created_by: string;
+  /** Preenchido pelo M3 quando artista/conta social do Drive não têm match. */
+  ingestion_warning: string | null;
+  /** Preenchidos pelo M3 a partir do JSON de metadado; consumidos pelo M4. */
+  source_fact: string | null;
+  track_name: string | null;
+  created_by: string | null;
   approved_by: string | null;
   created_at: string;
   updated_at: string;
@@ -60,7 +67,7 @@ export interface PostWithRelations extends Post {
     network: string;
     handle: string;
     display_name: string;
-  };
+  } | null;
   /** Preenchido só pela camada de leitura (lib/posts/queries.ts). */
   media_signed_url?: string | null;
 }
