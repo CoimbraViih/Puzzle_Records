@@ -348,6 +348,7 @@ export async function regenerateArt(postId: string) {
         error
       );
     }
+    revalidatePostPages();
     return;
   }
 
