@@ -5,7 +5,7 @@ import type { PostType } from "@/lib/types/post";
 export interface PostPendingCopy {
   id: string;
   post_type: PostType;
-  source_fact: string;
+  source_fact: string | null;
   track_name: string | null;
   artist: { name: string; handle: string } | null;
 }
