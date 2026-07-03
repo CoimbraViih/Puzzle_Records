@@ -54,6 +54,10 @@ export interface Post {
   /** Preenchidos pelo M3 a partir do JSON de metadado; consumidos pelo M4. */
   source_fact: string | null;
   track_name: string | null;
+  /** Preenchido pelo M4: todas as variações geradas (a 1ª sempre espelha headline/caption). */
+  copy_variations: CopyVariation[] | null;
+  /** Preenchido pelo M4 quando a geração de IA falha — nunca falha em silêncio. */
+  copy_generation_error: string | null;
   created_by: string | null;
   approved_by: string | null;
   created_at: string;
@@ -70,4 +74,9 @@ export interface PostWithRelations extends Post {
   } | null;
   /** Preenchido só pela camada de leitura (lib/posts/queries.ts). */
   media_signed_url?: string | null;
+}
+
+export interface CopyVariation {
+  headline: string;
+  caption: string;
 }
