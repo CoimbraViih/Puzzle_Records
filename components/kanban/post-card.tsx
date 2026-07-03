@@ -1,0 +1,152 @@
+import { Button } from "@/components/ui/button";
+import { approvePost, deletePost, submitForApproval } from "@/lib/posts/actions";
+import type { Artist } from "@/lib/types/artist";
+import { POST_TYPE_LABELS, type PostWithRelations } from "@/lib/types/post";
+import type { Role } from "@/lib/types/profile";
+import {
+  SOCIAL_NETWORK_LABELS,
+  type SocialAccount,
+} from "@/lib/types/social-account";
+
+import { PostFormDialog } from "./post-form-dialog";
+import { RejectDialog } from "./reject-dialog";
+
+function canEdit(post: PostWithRelations, role: Role, userId: string) {
+  if (role === "admin") return true;
+  if (role === "equipe_conteudo") {
+    return (
+      post.created_by === userId &&
+      (post.status === "rascunho" || post.status === "rejeitado")
+    );
+  }
+  if (role === "aprovador") return post.status === "pendente_aprovacao";
+  return false;
+}
+
+function canDelete(post: PostWithRelations, role: Role, userId: string) {
+  if (role === "admin") return true;
+  return (
+    role === "equipe_conteudo" &&
+    post.created_by === userId &&
+    post.status === "rascunho"
+  );
+}
+
+function canSubmit(post: PostWithRelations, role: Role, userId: string) {
+  const ownedByAuthor =
+    role === "equipe_conteudo" && post.created_by === userId;
+  const eligibleStatus =
+    post.status === "rascunho" || post.status === "rejeitado";
+  return (ownedByAuthor || role === "admin") && eligibleStatus;
+}
+
+function canDecide(post: PostWithRelations, role: Role) {
+  return (
+    (role === "aprovador" || role === "admin") &&
+    post.status === "pendente_aprovacao"
+  );
+}
+
+export function PostCard({
+  post,
+  currentUserId,
+  role,
+  artists,
+  socialAccounts,
+}: {
+  post: PostWithRelations;
+  currentUserId: string;
+  role: Role;
+  artists: Artist[];
+  socialAccounts: SocialAccount[];
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border bg-background p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+          {POST_TYPE_LABELS[post.post_type]}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          Template {post.template}
+        </span>
+      </div>
+
+      {post.media_signed_url && post.media_type === "image" && (
+        // eslint-disable-next-line @next/next/no-img-element -- URL assinada
+        // temporária do Storage, não faz sentido no otimizador de imagem do Next.
+        <img
+          src={post.media_signed_url}
+          alt={post.headline}
+          className="h-32 w-full rounded-md object-cover"
+        />
+      )}
+      {post.media_signed_url && post.media_type === "video" && (
+        <video
+          src={post.media_signed_url}
+          controls
+          className="h-32 w-full rounded-md object-cover"
+        />
+      )}
+
+      <p className="text-sm font-semibold text-foreground">{post.headline}</p>
+      <p className="line-clamp-3 text-xs text-muted-foreground">
+        {post.caption}
+      </p>
+
+      <p className="text-xs text-muted-foreground">
+        {SOCIAL_NETWORK_LABELS[
+          post.social_account.network as keyof typeof SOCIAL_NETWORK_LABELS
+        ] ?? post.social_account.network}{" "}
+        — {post.social_account.display_name}
+        {post.artist && ` · ${post.artist.name} (${post.artist.handle})`}
+      </p>
+
+      {post.status === "rejeitado" && post.rejection_reason && (
+        <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
+          Motivo: {post.rejection_reason}
+        </p>
+      )}
+
+      <div className="mt-2 flex flex-wrap gap-2">
+        {canEdit(post, role, currentUserId) && (
+          <PostFormDialog
+            mode="edit"
+            post={post}
+            artists={artists}
+            socialAccounts={socialAccounts}
+            triggerLabel="Editar"
+            triggerVariant="outline"
+          />
+        )}
+
+        {canSubmit(post, role, currentUserId) && (
+          <form action={submitForApproval.bind(null, post.id)}>
+            <Button type="submit" size="sm">
+              {post.status === "rejeitado"
+                ? "Reenviar"
+                : "Enviar para aprovação"}
+            </Button>
+          </form>
+        )}
+
+        {canDecide(post, role) && (
+          <form action={approvePost.bind(null, post.id)}>
+            <Button type="submit" size="sm">
+              Aprovar
+            </Button>
+          </form>
+        )}
+
+        {canDecide(post, role) && <RejectDialog postId={post.id} />}
+
+        {canDelete(post, role, currentUserId) && (
+          <form action={deletePost.bind(null, post.id)}>
+            <Button type="submit" variant="ghost" size="sm">
+              Excluir
+            </Button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
