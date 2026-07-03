@@ -139,12 +139,13 @@ export async function updatePost(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("posts")
     .update(update)
-    .eq("id", postId);
+    .eq("id", postId)
+    .select("id");
 
-  if (error) {
+  if (error || !data || data.length === 0) {
     return {
       error:
         "Não foi possível salvar as alterações. Verifique se você ainda pode editar este post.",
@@ -206,12 +207,14 @@ export async function rejectPost(
     return { error: "Informe o motivo da rejeição." };
   }
 
-  const error = await updateStatus(postId, "rejeitado", {
-    approved_by: profile.id,
-    rejection_reason: reason,
-  });
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("posts")
+    .update({ status: "rejeitado", approved_by: profile.id, rejection_reason: reason })
+    .eq("id", postId)
+    .select("id");
 
-  if (error) {
+  if (error || !data || data.length === 0) {
     return { error: "Não foi possível rejeitar o post." };
   }
 
