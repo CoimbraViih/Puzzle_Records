@@ -63,15 +63,20 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 **Pronto para avançar quando**: um post pendente do M3 recebe automaticamente manchete + legenda com variações plausíveis no tom da Puzzle Records. *(Código commitado na `main`; falta rodar o checklist manual de `docs/plans/2026-07-03-m4-copy-openai.md` — Task 11 — contra um projeto Supabase linkado e uma chave `OPENAI_API_KEY` real: aplicar a migration `0004_ai_copy.sql`, rodar o cron contra um post pendente de verdade e testar o caminho de erro. **Limitação conhecida para o M6**: hoje não há, no Kanban, uma ação para mover um post de `pendente` (Drive/IA) para `pendente_aprovacao` — nem o RLS nem a UI cobrem essa transição ainda; o M6 precisa fechar esse elo antes de o fluxo ponta a ponta funcionar.)*
 
-## M5 — Gerador de news cards
+## M5 — Gerador de news cards ✅ (código pronto, checklist manual pendente)
 
 **Objetivo**: arte pronta a partir de mídia + manchete.
 
-- Template A (faixa branca) e Template B (manchete sobre imagem) em HTML/CSS.
-- Render para imagem via Puppeteer ou Satori.
-- Identidade Puzzle Records aplicada (logo, cor `#96DB12`).
+- [x] Template A (faixa branca) e Template B (manchete sobre imagem) como árvores JSX compatíveis com Satori (`lib/renderer/templates/templateA.tsx`, `templateB.tsx`), 1080×1350px — dimensão não especificada na documentação-fonte, escolhida por ser o formato retrato do feed do Instagram.
+- [x] Render para imagem via Satori + `@resvg/resvg-js` (dupla usada pelo `@vercel/og`), não Puppeteer — decisão explícita por peso/cold-start em função serverless da Vercel (`lib/renderer/renderArt.ts`).
+- [x] Identidade Puzzle Records aplicada: logo (`puzzle-records-logo.svg`) embutido como data URI, `#96DB12` usado como acento no rodapé do Template B.
+- [x] Cron da Vercel a cada 5 minutos (`app/api/cron/generate-art`), mesmo padrão de `CRON_SECRET` do M3/M4, para posts com `headline`/`template` prontos e sem arte ainda.
+- [x] Ação manual "Gerar arte"/"Regenerar arte" no Kanban (`regenerateArt`), para não depender do cron durante testes/edições.
+- [x] Falha na geração nunca é silenciosa: `art_generation_error` gravado no post e visível na fila, mesmo padrão do `copy_generation_error` do M4.
+- [x] Escopo v1: só posts com `media_type = 'image'`; vídeo grava erro explícito em vez de tentar extrair frame (evita over-engineering sem demanda real).
+- [x] Revisão de código pós-implementação (subagent-driven-development, task a task) — corrigido: fonte "Inter Bold" baixada inicialmente era a fonte variável (peso padrão Regular, não Bold — Satori não reinstancia eixos de fonte variável), substituída pela estática peso 700; `isAuthorized()` do cron `generate-art` falhava aberto quando `CRON_SECRET` não estava definido (comparava contra a string literal `"Bearer undefined"`), corrigido para falhar fechado como o `generate-copy` do M4.
 
-**Pronto para avançar quando**: dado uma foto/vídeo + manchete escolhida, o sistema gera a arte final nos 2 formatos.
+**Pronto para avançar quando**: dado uma foto/vídeo + manchete escolhida, o sistema gera a arte final nos 2 formatos. *(Código commitado e revisado na branch `worktree-m5-news-cards` — **ainda não mergeado na `main`**, o merge acontece ao final do fluxo junto com a revisão geral da branch. `npm run build`, `npx tsc --noEmit` e `npm run lint` rodam limpos (só warnings pré-existentes de `<img>`/`alt` nos templates Satori, que não se aplicam — não são elementos DOM reais). Falta rodar o checklist manual contra um projeto Supabase linkado e mídia/copy reais vindas do M2–M4: aplicar a migration `0005_news_card_render.sql`, chamar o cron contra um post com `headline`/`template` prontos, conferir os dois templates, e testar o caminho de erro (`art_generation_error`) de ponta a ponta.)*
 
 ## M6 — Fila de aprovação completa
 
