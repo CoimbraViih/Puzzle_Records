@@ -3,9 +3,10 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { listPostsPendingArt } from "@/lib/posts/pendingArt";
 import { renderArt, ArtRenderError } from "@/lib/renderer/renderArt";
 
-function isAuthorized(request: Request) {
-  const auth = request.headers.get("authorization");
-  return auth === `Bearer ${process.env.CRON_SECRET}`;
+function isAuthorized(request: Request): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  return request.headers.get("authorization") === `Bearer ${secret}`;
 }
 
 async function recordArtError(postId: string, message: string) {
