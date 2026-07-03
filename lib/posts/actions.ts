@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  CopyVariation,
   MediaType,
   PostStatus,
   PostTemplate,
@@ -245,4 +246,41 @@ export async function rejectPost(
 
   revalidatePostPages();
   return { success: true };
+}
+
+export async function selectCopyVariation(
+  postId: string,
+  index: number,
+  _formData: FormData
+) {
+  const supabase = await createClient();
+  const { data: post, error: fetchError } = await supabase
+    .from("posts")
+    .select("copy_variations")
+    .eq("id", postId)
+    .single();
+
+  const variations = post?.copy_variations as CopyVariation[] | null;
+  const variation = variations?.[index];
+  if (fetchError || !variation) {
+    console.error(
+      "Falha ao trocar variação de copy (post ou índice inválido):",
+      postId,
+      index,
+      fetchError
+    );
+    return;
+  }
+
+  const { error } = await supabase
+    .from("posts")
+    .update({ headline: variation.headline, caption: variation.caption })
+    .eq("id", postId);
+
+  if (error) {
+    console.error("Falha ao aplicar variação selecionada:", postId, error);
+    return;
+  }
+
+  revalidatePostPages();
 }
