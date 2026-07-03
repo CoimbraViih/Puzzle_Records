@@ -1,24 +1,9 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
+import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { ROLES, type Role } from "@/lib/types/profile";
-
-function getServiceClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY."
-    );
-  }
-
-  return createServiceClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 async function requireAdmin() {
   const profile = await getCurrentProfile();
@@ -64,9 +49,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
 
-  let serviceClient: ReturnType<typeof getServiceClient>;
+  let serviceClient: ReturnType<typeof createServiceClient>;
   try {
-    serviceClient = getServiceClient();
+    serviceClient = createServiceClient();
   } catch (err) {
     console.error("Falha ao criar o cliente Supabase com service role:", err);
     return NextResponse.json(
