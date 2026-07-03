@@ -108,3 +108,24 @@ visualmente pelo status de conexão na página inicial.
      ```
    - A partir daí, esse admin consegue convidar os demais usuários direto
      pela tela `/admin/usuarios` do painel.
+
+## Pós-M3: Service Account do Drive e cron de ingestão
+
+1. No [Google Cloud Console](https://console.cloud.google.com), crie (ou reaproveite) um
+   projeto, ative a **Google Drive API** e crie uma **Service Account** em
+   **IAM & Admin > Service Accounts**.
+2. Gere uma chave JSON para essa service account (**Keys > Add Key > JSON**) e baixe o
+   arquivo.
+3. Compartilhe a pasta do Drive usada para ingestão com o e-mail `client_email` do JSON
+   (papel **Editor**).
+4. Copie o conteúdo do JSON inteiro, em uma linha só, para `GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY`
+   no `.env.local` e nas env vars da Vercel.
+5. Preencha `GOOGLE_DRIVE_FOLDER_ID` com o ID da pasta (parte final da URL do Drive).
+6. Gere um valor aleatório para `CRON_SECRET` (ex: `openssl rand -hex 32`) e configure na
+   Vercel — isso ativa a proteção automática das chamadas de cron da própria Vercel.
+7. Aplique a migration do M3:
+   ```
+   npx supabase db push
+   ```
+8. Depois do próximo deploy, o cron `/api/cron/drive-ingest` passa a rodar a cada 5
+   minutos automaticamente (agendado em `vercel.json`) — sem nenhum passo manual adicional.
