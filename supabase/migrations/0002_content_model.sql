@@ -109,11 +109,15 @@ create policy "posts_insert_conteudo_or_admin"
   );
 
 -- Equipe de conteúdo só edita os próprios posts em rascunho/rejeitado,
--- e o WITH CHECK trava o status alvo em rascunho/pendente_aprovacao —
--- sem essa trava, o autor conseguiria se auto-aprovar setando
--- status='aprovado' na mesma UPDATE que edita o texto (as políticas
--- permissivas de UPDATE se combinam com OR entre si, então o USING de
--- uma política não amarra o WITH CHECK de outra).
+-- e o WITH CHECK trava o status alvo em rascunho/pendente_aprovacao/
+-- rejeitado — nunca 'aprovado'. Sem essa trava, o autor conseguiria se
+-- auto-aprovar setando status='aprovado' na mesma UPDATE que edita o
+-- texto (as políticas permissivas de UPDATE se combinam com OR entre
+-- si, então o USING de uma política não amarra o WITH CHECK de outra).
+-- 'rejeitado' precisa estar no WITH CHECK porque editar um post
+-- rejeitado sem reenviar (ex: só corrigir o texto e salvar) mantém o
+-- status atual — sem essa entrada, a UPDATE seria bloqueada mesmo
+-- edições que não mudam o status.
 create policy "posts_update_owner_draft_or_rejected"
   on public.posts for update
   using (
@@ -124,7 +128,7 @@ create policy "posts_update_owner_draft_or_rejected"
   with check (
     created_by = auth.uid()
     and public.has_role('equipe_conteudo')
-    and status in ('rascunho', 'pendente_aprovacao')
+    and status in ('rascunho', 'pendente_aprovacao', 'rejeitado')
   );
 
 -- Aprovador decide (ou edita mantendo pendente) só posts pendentes.
