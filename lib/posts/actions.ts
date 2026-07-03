@@ -272,13 +272,18 @@ export async function selectCopyVariation(
     return;
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("posts")
     .update({ headline: variation.headline, caption: variation.caption })
-    .eq("id", postId);
+    .eq("id", postId)
+    .select("id");
 
-  if (error) {
-    console.error("Falha ao aplicar variação selecionada:", postId, error);
+  if (error || !updated || updated.length === 0) {
+    console.error(
+      "Falha ao aplicar variação selecionada (bloqueado por RLS ou erro do Supabase):",
+      postId,
+      error
+    );
     return;
   }
 
