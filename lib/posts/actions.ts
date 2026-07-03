@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
+import { renderArt, ArtRenderError } from "@/lib/renderer/renderArt";
 import { createClient } from "@/lib/supabase/server";
 import type {
   CopyVariation,
@@ -284,6 +285,69 @@ export async function selectCopyVariation(
       postId,
       error
     );
+    return;
+  }
+
+  revalidatePostPages();
+}
+
+export async function regenerateArt(postId: string) {
+  const supabase = await createClient();
+  const { data: post, error: fetchError } = await supabase
+    .from("posts")
+    .select("id, template, headline, media_url, media_type")
+    .eq("id", postId)
+    .single();
+
+  if (fetchError || !post || !post.template || !post.headline) {
+    console.error(
+      "Falha ao regenerar arte (post inválido ou sem template/headline prontos):",
+      postId,
+      fetchError
+    );
+    return;
+  }
+
+  try {
+    const artPath = await renderArt({
+      postId: post.id,
+      template: post.template as PostTemplate,
+      headline: post.headline,
+      mediaUrl: post.media_url,
+      mediaType: post.media_type as MediaType,
+    });
+
+    const { data: updated, error } = await supabase
+      .from("posts")
+      .update({ rendered_art_url: artPath, art_generation_error: null })
+      .eq("id", postId)
+      .select("id");
+
+    if (error || !updated || updated.length === 0) {
+      console.error(
+        "Falha ao gravar arte regenerada (bloqueado por RLS ou erro do Supabase):",
+        postId,
+        error
+      );
+      return;
+    }
+  } catch (err) {
+    const message =
+      err instanceof ArtRenderError ? err.message : "Erro inesperado ao gerar a arte.";
+
+    const { data: updated, error } = await supabase
+      .from("posts")
+      .update({ art_generation_error: message })
+      .eq("id", postId)
+      .select("id");
+
+    if (error || !updated || updated.length === 0) {
+      console.error(
+        "Falha ao gravar art_generation_error (bloqueado por RLS ou erro do Supabase):",
+        postId,
+        error
+      );
+    }
     return;
   }
 
