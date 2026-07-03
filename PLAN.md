@@ -24,6 +24,7 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 - [x] Supabase Auth (login por e-mail) — login, logout, recuperação e definição de senha.
 - [x] Papéis: admin, aprovador, equipe de conteúdo — tabela `profiles` com RLS.
 - [x] Permissões básicas por papel (quem vê o quê) — `proxy.ts` redireciona e restringe por papel; convite de usuário via `/admin/usuarios`.
+- [x] Revisão de código pós-implementação (8 ângulos: bugs, segurança, duplicação, eficiência) — corrigido: `/api/admin/**` agora tem defesa em profundidade no `proxy.ts` (antes só a rota confiava em `requireAdmin()`), parâmetro `next` do `/auth/confirm` restrito a caminho interno, erros de parse/config tratados na rota de convite em vez de 500 não estruturado.
 
 **Pronto para avançar quando**: os 3 papéis conseguem logar e são redirecionados/restritos corretamente. *(Código commitado na `main`; falta rodar o checklist manual de `docs/plans/2026-07-02-m1-login-multiusuario.md` — Task 12 — contra um projeto Supabase linkado: aplicar a migration, criar o primeiro admin e testar um convite real ponta a ponta.)*
 
