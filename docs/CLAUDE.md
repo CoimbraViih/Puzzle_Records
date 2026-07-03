@@ -12,6 +12,12 @@ Objetivo de negócio: crescer o @puzzlerecordss replicando o modelo do @lovefunk
 
 **Nenhum post é publicado sem aprovação humana.** Nunca implemente um caminho que publique direto sem passar pela fila de aprovação, mesmo como atalho de teste ou feature flag.
 
+## Workflow de git
+
+Repositório remoto: https://github.com/CoimbraViih/Puzzle_Records (branch `main`).
+
+**Sempre faça `git push` para `origin/main` logo depois de cada commit nessa branch, sem pedir confirmação antes.** Isso vale para commits feitos diretamente pelo Claude e para merges de branches de feature/worktree de volta na `main` — o push final faz parte do fluxo normal, não é uma ação separada que precisa de autorização a cada vez. Só peça confirmação explícita para operações destrutivas de git (force-push, reset --hard em branch compartilhada, deletar branch remota) — essas continuam exigindo confirmação.
+
 ## Stack
 
 Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, Supabase (Postgres + Auth + Storage), Vercel + Vercel Cron, Resend (e-mails), OpenAI API, API do Zernio (publicação multi-rede), Google Drive API (ingestão), Puppeteer ou Satori (render de artes HTML → imagem).
