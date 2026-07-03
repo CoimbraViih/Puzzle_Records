@@ -20,10 +20,20 @@ export async function listPosts(): Promise<PostWithRelations[]> {
   const posts = (data as PostWithRelations[]) ?? [];
   if (posts.length === 0) return posts;
 
+  // Um único round-trip ao Storage para os paths de mídia e de arte renderizada
+  // (ambos vivem no bucket posts-media). Os paths de arte são intercalados só
+  // para os posts que já têm `rendered_art_url` preenchido.
+  const mediaPaths = posts.map((post) => post.media_url);
+  const artPathEntries = posts
+    .map((post, index) => ({ index, path: post.rendered_art_url }))
+    .filter(
+      (entry): entry is { index: number; path: string } => entry.path !== null
+    );
+
   const { data: signedUrls, error: signedUrlsError } = await supabase.storage
     .from("posts-media")
     .createSignedUrls(
-      posts.map((post) => post.media_url),
+      [...mediaPaths, ...artPathEntries.map((entry) => entry.path)],
       60 * 60
     );
 
@@ -32,9 +42,18 @@ export async function listPosts(): Promise<PostWithRelations[]> {
     return posts;
   }
 
+  const artSignedUrlByPostIndex = new Map<number, string | null>();
+  artPathEntries.forEach((entry, artIndex) => {
+    artSignedUrlByPostIndex.set(
+      entry.index,
+      signedUrls?.[mediaPaths.length + artIndex]?.signedUrl ?? null
+    );
+  });
+
   return posts.map((post, index) => ({
     ...post,
     media_signed_url: signedUrls?.[index]?.signedUrl ?? null,
+    rendered_art_signed_url: artSignedUrlByPostIndex.get(index) ?? null,
   }));
 }
 
