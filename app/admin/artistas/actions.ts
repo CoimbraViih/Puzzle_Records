@@ -30,6 +30,9 @@ export async function createArtist(
 
 export async function deleteArtist(artistId: string, _formData: FormData) {
   const supabase = await createClient();
-  await supabase.from("artists").delete().eq("id", artistId);
+  const { error } = await supabase.from("artists").delete().eq("id", artistId);
+  if (error) {
+    console.error("Falha ao excluir artista:", error);
+  }
   revalidatePath("/admin/artistas");
 }
