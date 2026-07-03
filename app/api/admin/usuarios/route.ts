@@ -1,6 +1,7 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
+import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
 import { ROLES, type Role } from "@/lib/types/profile";
 
@@ -20,20 +21,8 @@ function getServiceClient() {
 }
 
 async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  return profile?.role === "admin" ? user : null;
+  const profile = await getCurrentProfile();
+  return profile?.role === "admin" ? profile : null;
 }
 
 export async function GET() {
@@ -61,7 +50,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 403 });
   }
 
-  const body = await request.json();
+  let body: { email?: unknown; role?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+  }
+
   const email = String(body.email ?? "");
   const role = String(body.role ?? "") as Role;
 
@@ -69,7 +64,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
 
-  const serviceClient = getServiceClient();
+  let serviceClient: ReturnType<typeof getServiceClient>;
+  try {
+    serviceClient = getServiceClient();
+  } catch (err) {
+    console.error("Falha ao criar o cliente Supabase com service role:", err);
+    return NextResponse.json(
+      { error: "server_misconfigured" },
+      { status: 500 }
+    );
+  }
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   const { error } = await serviceClient.auth.admin.inviteUserByEmail(email, {

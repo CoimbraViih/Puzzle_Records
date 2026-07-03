@@ -12,7 +12,9 @@ function isPublicRoute(pathname: string) {
 }
 
 function roleAllowsRoute(role: Role, pathname: string) {
-  if (pathname.startsWith("/admin")) return role === "admin";
+  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
+    return role === "admin";
+  }
   if (pathname.startsWith("/aprovacao")) {
     return role === "admin" || role === "aprovador";
   }
@@ -63,7 +65,16 @@ export async function updateSession(request: NextRequest) {
     if (isPublicRoute(pathname)) {
       return response;
     }
-    return NextResponse.redirect(new URL("/login", request.url));
+    if (pathname.startsWith("/api")) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    const redirectResponse = NextResponse.redirect(
+      new URL("/login", request.url)
+    );
+    response.cookies
+      .getAll()
+      .forEach((cookie) => redirectResponse.cookies.set(cookie));
+    return redirectResponse;
   }
 
   const { data: profile } = await supabase
@@ -85,6 +96,9 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (!roleAllowsRoute(role, pathname) && !isPublicRoute(pathname)) {
+    if (pathname.startsWith("/api")) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
     const redirectResponse = NextResponse.redirect(
       new URL(ROLE_HOME[role], request.url)
     );
