@@ -1,0 +1,36 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import type { PostType } from "@/lib/types/post";
+
+export interface PostPendingCopy {
+  id: string;
+  post_type: PostType;
+  source_fact: string;
+  track_name: string | null;
+  artist: { name: string; handle: string } | null;
+}
+
+/**
+ * Posts que ainda não têm manchete/legenda e nunca falharam ao gerar
+ * (copy_generation_error é null) — isso é o que dá idempotência ao cron
+ * do M4 sem precisar de uma tabela de auditoria à parte.
+ */
+export async function listPostsPendingCopy(
+  supabase: SupabaseClient
+): Promise<PostPendingCopy[]> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select(
+      "id, post_type, source_fact, track_name, artist:artists(name, handle)"
+    )
+    .eq("status", "pendente")
+    .is("headline", null)
+    .is("copy_generation_error", null);
+
+  if (error) {
+    console.error("Falha ao listar posts pendentes de manchete/legenda:", error);
+    return [];
+  }
+
+  return (data as unknown as PostPendingCopy[]) ?? [];
+}
