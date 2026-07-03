@@ -1,5 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { approvePost, deletePost, submitForApproval } from "@/lib/posts/actions";
+import {
+  approvePost,
+  deletePost,
+  selectCopyVariation,
+  submitForApproval,
+} from "@/lib/posts/actions";
 import type { Artist } from "@/lib/types/artist";
 import { POST_TYPE_LABELS, type PostWithRelations } from "@/lib/types/post";
 import type { Role } from "@/lib/types/profile";
@@ -98,6 +103,22 @@ export function PostCard({
         {post.caption ?? "Aguardando legenda da IA (M4)"}
       </p>
 
+      {post.copy_variations && post.copy_variations.length > 1 && (
+        <div className="flex flex-wrap gap-1">
+          {post.copy_variations.map((variation, index) => (
+            <form key={index} action={selectCopyVariation.bind(null, post.id, index)}>
+              <Button
+                type="submit"
+                size="sm"
+                variant={variation.headline === post.headline ? "default" : "outline"}
+              >
+                Variação {index + 1}
+              </Button>
+            </form>
+          ))}
+        </div>
+      )}
+
       <p className="text-xs text-muted-foreground">
         {post.social_account
           ? `${
@@ -118,6 +139,12 @@ export function PostCard({
       {post.ingestion_warning && (
         <p className="rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-600 dark:text-amber-400">
           {post.ingestion_warning}
+        </p>
+      )}
+
+      {post.copy_generation_error && (
+        <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
+          Erro ao gerar manchete/legenda: {post.copy_generation_error}
         </p>
       )}
 
