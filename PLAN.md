@@ -40,15 +40,15 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 **Pronto para avançar quando**: um post criado manualmente percorre todo o ciclo de status no Kanban. *(Código commitado na `main`; falta rodar o checklist manual de `docs/plans/2026-07-02-m2-kanban-manual.md` — Task 13 — contra um projeto Supabase linkado: aplicar a migration `0002_content_model.sql`, cadastrar artista/conta social, e testar o ciclo completo de aprovação com os 3 papéis.)*
 
-## M3 — Ingestão do Google Drive
+## M3 — Ingestão do Google Drive ✅ (código pronto, checklist manual pendente)
 
 **Objetivo**: conteúdo entra no sistema sem intervenção manual.
 
-- Monitoramento da pasta acordada via Google Drive API.
-- Detecção de arquivo novo + leitura de metadados (artista, música, fato — via nome do arquivo ou .txt junto).
-- Post novo entra na fila com status "pendente" (sem manchete/legenda ainda).
+- [x] Monitoramento da pasta acordada via Google Drive API — cron da Vercel a cada 5 minutos (`app/api/cron/drive-ingest`), autenticado via Service Account (`lib/drive/client.ts`).
+- [x] Detecção de arquivo novo + leitura de metadados (artista, música, fato, conta social, tipo — via `.json` com o mesmo nome-base da mídia). Sem match de artista/conta social, o post é criado mesmo assim com `ingestion_warning` visível na fila (nunca falha em silêncio).
+- [x] Post novo entra na fila com status "pendente" (sem manchete/legenda ainda — `source_fact`/`track_name` guardados para o M4 usar). Arquivos processados são movidos para a subpasta `Processados/` no Drive.
 
-**Pronto para avançar quando**: soltar um arquivo na pasta do Drive cria um post pendente no painel em poucos minutos.
+**Pronto para avançar quando**: soltar um arquivo na pasta do Drive cria um post pendente no painel em poucos minutos. *(Código commitado na `main`; falta rodar o checklist manual de `docs/plans/2026-07-03-m3-drive-ingestion.md` — Task 13 — contra uma pasta real do Drive e um projeto Supabase linkado: aplicar a migration `0003_drive_ingestion.sql`, configurar a Service Account e o `CRON_SECRET`, e soltar arquivos reais na pasta.)*
 
 ## M4 — Geração de manchete/legenda via OpenAI
 
