@@ -63,19 +63,15 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 **Pronto para avançar quando**: um post pendente do M3 recebe automaticamente manchete + legenda com variações plausíveis no tom da Puzzle Records. *(Código commitado na `main`; falta rodar o checklist manual de `docs/plans/2026-07-03-m4-copy-openai.md` — Task 11 — contra um projeto Supabase linkado e uma chave `OPENAI_API_KEY` real: aplicar a migration `0004_ai_copy.sql`, rodar o cron contra um post pendente de verdade e testar o caminho de erro. **Limitação conhecida para o M6**: hoje não há, no Kanban, uma ação para mover um post de `pendente` (Drive/IA) para `pendente_aprovacao` — nem o RLS nem a UI cobrem essa transição ainda; o M6 precisa fechar esse elo antes de o fluxo ponta a ponta funcionar.)*
 
-## M5 — Gerador de news cards ✅ (código pronto, checklist manual pendente)
+## M5 — Gerador de news cards
 
 **Objetivo**: arte pronta a partir de mídia + manchete.
 
-- [x] Template A (faixa branca) e Template B (manchete sobre imagem) em HTML/CSS via Satori JSX — `lib/renderer/templates/templateA.tsx` e `templateB.tsx`.
-- [x] Render para PNG via Satori + @resvg/resvg-js (`lib/renderer/satori.ts`), com fontes Anton e Inter-Bold embarcadas via `next.config.ts`.
-- [x] Identidade Puzzle Records aplicada: logo SVG embutido nos templates, cor `#96DB12`, dimensões Instagram (1080×1350).
-- [x] Cron da Vercel a cada 5 minutos (`app/api/cron/generate-art`), desacoplado dos demais cronsm mesmo padrão de autenticação via `CRON_SECRET`; processa posts com `headline` pronta e `template` definido.
-- [x] Render orquestra fluxo Satori JSX → PNG → Supabase Storage (`lib/renderer/orchestrate.ts`), atualiza `rendered_art_url` no post.
-- [x] Falha na geração nunca é silenciosa: `art_generation_error` gravado no post e visível na fila, mesmo padrão do `copy_generation_error` do M4.
-- [x] Preview fiel no card do Kanban + ação manual "Regenerar arte" para o aprovador forçar novo render sem esperar o cron.
+- Template A (faixa branca) e Template B (manchete sobre imagem) em HTML/CSS.
+- Render para imagem via Puppeteer ou Satori.
+- Identidade Puzzle Records aplicada (logo, cor `#96DB12`).
 
-**Pronto para avançar quando**: dado uma foto/vídeo + manchete escolhida, o sistema gera a arte final nos 2 formatos e exibe no preview. *(Código commitado na branch (não merged em `main` ainda); falta rodar o checklist manual de `docs/plans/2026-07-03-m5-news-cards.md` — Task 12 — contra um projeto Supabase linkado com `STORAGE_BUCKET_NAME` configurado, populado com posts reais do M2–M4 com manchetes prontas (saído do M4), incluindo a verificação do caminho de erro (`art_generation_error`))*
+**Pronto para avançar quando**: dado uma foto/vídeo + manchete escolhida, o sistema gera a arte final nos 2 formatos.
 
 ## M6 — Fila de aprovação completa
 

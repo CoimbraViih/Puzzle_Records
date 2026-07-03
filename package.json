@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
-    "@resvg/resvg-js": "^2.6.2",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.0",
     "class-variance-authority": "^0.7.1",
@@ -21,7 +20,6 @@
     "openai": "^6.45.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "satori": "^0.26.0",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
