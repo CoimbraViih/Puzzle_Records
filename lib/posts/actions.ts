@@ -158,7 +158,21 @@ export async function updatePost(
 
 export async function deletePost(postId: string, _formData: FormData) {
   const supabase = await createClient();
-  await supabase.from("posts").delete().eq("id", postId);
+  const { data, error } = await supabase
+    .from("posts")
+    .delete()
+    .eq("id", postId)
+    .select("id");
+
+  if (error || !data || data.length === 0) {
+    console.error(
+      "Falha ao excluir post (bloqueado por RLS ou erro do Supabase):",
+      postId,
+      error
+    );
+    return;
+  }
+
   revalidatePostPages();
 }
 
@@ -168,11 +182,22 @@ async function updateStatus(
   extra: Record<string, unknown> = {}
 ) {
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("posts")
     .update({ status, ...extra })
-    .eq("id", postId);
-  return error;
+    .eq("id", postId)
+    .select("id");
+
+  if (error || !data || data.length === 0) {
+    console.error(
+      `Falha ao mudar post para status "${status}" (bloqueado por RLS ou erro do Supabase):`,
+      postId,
+      error
+    );
+    return error ?? new Error("rls_blocked");
+  }
+
+  return null;
 }
 
 export async function submitForApproval(postId: string, _formData: FormData) {
