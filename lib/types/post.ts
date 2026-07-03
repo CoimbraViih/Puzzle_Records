@@ -58,6 +58,10 @@ export interface Post {
   copy_variations: CopyVariation[] | null;
   /** Preenchido pelo M4 quando a geração de IA falha — nunca falha em silêncio. */
   copy_generation_error: string | null;
+  /** Preenchido pelo M5: path no bucket posts-media da arte PNG renderizada (Template A ou B). */
+  rendered_art_url: string | null;
+  /** Preenchido pelo M5 quando a geração de arte falha — nunca falha em silêncio. */
+  art_generation_error: string | null;
   created_by: string | null;
   approved_by: string | null;
   created_at: string;
@@ -74,6 +78,8 @@ export interface PostWithRelations extends Post {
   } | null;
   /** Preenchido só pela camada de leitura (lib/posts/queries.ts). */
   media_signed_url?: string | null;
+  /** Preenchido só pela camada de leitura (lib/posts/queries.ts). */
+  rendered_art_signed_url?: string | null;
 }
 
 export interface CopyVariation {

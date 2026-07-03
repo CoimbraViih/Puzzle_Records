@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/generate-copy",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/generate-art",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

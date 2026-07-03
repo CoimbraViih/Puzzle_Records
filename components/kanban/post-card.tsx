@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import {
   approvePost,
   deletePost,
+  regenerateArt,
   selectCopyVariation,
   submitForApproval,
 } from "@/lib/posts/actions";
@@ -96,6 +97,15 @@ export function PostCard({
         />
       )}
 
+      {post.rendered_art_signed_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={post.rendered_art_signed_url}
+          alt="Arte gerada"
+          className="mt-2 w-full rounded-md border"
+        />
+      )}
+
       <p className="text-sm font-semibold text-foreground">
         {post.headline ?? "Aguardando manchete da IA (M4)"}
       </p>
@@ -148,6 +158,12 @@ export function PostCard({
         </p>
       )}
 
+      {post.art_generation_error && (
+        <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
+          Falha ao gerar arte: {post.art_generation_error}
+        </p>
+      )}
+
       <div className="mt-2 flex flex-wrap gap-2">
         {canEdit(post, role, currentUserId) && (
           <PostFormDialog
@@ -179,6 +195,14 @@ export function PostCard({
         )}
 
         {canDecide(post, role) && <RejectDialog postId={post.id} />}
+
+        {post.headline && post.template && (
+          <form action={regenerateArt.bind(null, post.id)}>
+            <Button type="submit" size="sm" variant="outline">
+              {post.rendered_art_url ? "Regenerar arte" : "Gerar arte"}
+            </Button>
+          </form>
+        )}
 
         {canDelete(post, role, currentUserId) && (
           <form action={deletePost.bind(null, post.id)}>
