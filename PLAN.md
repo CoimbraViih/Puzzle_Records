@@ -50,15 +50,17 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 **Pronto para avançar quando**: soltar um arquivo na pasta do Drive cria um post pendente no painel em poucos minutos. *(Código commitado na `main`; falta rodar o checklist manual de `docs/plans/2026-07-03-m3-drive-ingestion.md` — Task 13 — contra uma pasta real do Drive e um projeto Supabase linkado: aplicar a migration `0003_drive_ingestion.sql`, configurar a Service Account e o `CRON_SECRET`, e soltar arquivos reais na pasta.)*
 
-## M4 — Geração de manchete/legenda via OpenAI
+## M4 — Geração de manchete/legenda via OpenAI ✅ (código pronto, checklist manual pendente)
 
 **Objetivo**: IA escreve no tom da casa.
 
-- Prompt com o guia de estilo (`GUIA-DE-ESTILO-POSTS-PUZZLE.md`): sem hashtags, @mention, fórmulas de manchete.
-- GPT-4o-mini para rotina, GPT-4o para lançamentos.
-- 2–3 variações geradas por post.
+- [x] Cron da Vercel a cada 5 minutos (`app/api/cron/generate-copy`), desacoplado do cron de ingestão do Drive, mesmo padrão de autenticação via `CRON_SECRET` do M3.
+- [x] Prompt com o guia de estilo (`GUIA-DE-ESTILO-POSTS-PUZZLE.md`) hardcoded em `lib/openai/prompts.ts`: sem hashtags, @mention, fórmulas de manchete.
+- [x] `gpt-4o-mini` para rotina, `gpt-4o` quando `post_type = 'lancamento'` (`lib/openai/generateCopy.ts`).
+- [x] 2–3 variações geradas por post, gravadas em `copy_variations` (jsonb); a primeira vira `headline`/`caption`. Picker de variações no card do Kanban (`selectCopyVariation`).
+- [x] Falha na geração nunca é silenciosa: `copy_generation_error` gravado no post e visível na fila, mesmo padrão do `ingestion_warning` do M3.
 
-**Pronto para avançar quando**: um post pendente do M3 recebe automaticamente manchete + legenda com variações plausíveis no tom da Puzzle Records.
+**Pronto para avançar quando**: um post pendente do M3 recebe automaticamente manchete + legenda com variações plausíveis no tom da Puzzle Records. *(Código commitado na `main`; falta rodar o checklist manual de `docs/plans/2026-07-03-m4-copy-openai.md` — Task 11 — contra um projeto Supabase linkado e uma chave `OPENAI_API_KEY` real: aplicar a migration `0004_ai_copy.sql`, rodar o cron contra um post pendente de verdade e testar o caminho de erro.)*
 
 ## M5 — Gerador de news cards
 
