@@ -24,6 +24,18 @@ export default async function AdminPage() {
       >
         Gerenciar usuários
       </Link>
+      <Link
+        href="/admin/artistas"
+        className="text-sm text-primary underline-offset-4 hover:underline"
+      >
+        Artistas
+      </Link>
+      <Link
+        href="/admin/contas"
+        className="text-sm text-primary underline-offset-4 hover:underline"
+      >
+        Contas sociais
+      </Link>
       <form action={logout}>
         <Button type="submit" variant="outline">
           Sair
