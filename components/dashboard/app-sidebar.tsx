@@ -51,7 +51,7 @@ export function AppSidebar({ profile }: { profile: Profile }) {
         {groups.map((group, index) => (
           <SidebarGroup key={group.label}>
             {index > 0 && <SidebarSeparator className="mb-2" />}
-            <SidebarGroupLabel className="text-[0.6875rem] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+            <SidebarGroupLabel className="text-[0.6875rem] font-semibold uppercase tracking-wider text-sidebar-foreground/60">
               {group.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -61,7 +61,12 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                   return (
                     <SidebarMenuItem key={item.url}>
                       <SidebarMenuButton
-                        render={<Link href={item.url} />}
+                        render={
+                          <Link
+                            href={item.url}
+                            aria-current={isActive ? "page" : undefined}
+                          />
+                        }
                         isActive={isActive}
                         tooltip={item.title}
                         className="relative gap-2.5 before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-primary before:opacity-0 before:transition-opacity data-active:before:opacity-100 data-active:text-sidebar-primary [&_svg]:text-sidebar-foreground/60 data-active:[&_svg]:text-sidebar-primary"
