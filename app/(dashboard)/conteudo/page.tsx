@@ -1,10 +1,8 @@
-import { logout } from "@/app/login/actions";
 import { KanbanBoard } from "@/components/kanban/board";
 import { PostFormDialog } from "@/components/kanban/post-form-dialog";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { listArtists, listPosts, listSocialAccounts } from "@/lib/posts/queries";
-import { ROLE_LABELS } from "@/lib/types/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -17,30 +15,19 @@ export default async function ConteudoPage() {
   ]);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 px-6 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <span className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium tracking-wide text-primary uppercase">
-            {profile ? ROLE_LABELS[profile.role] : "Equipe de conteúdo"}
-          </span>
-          <h1 className="mt-2 text-2xl font-semibold text-foreground">
-            Fila de posts
-          </h1>
-        </div>
-        <div className="flex items-center gap-3">
+    <div className="flex flex-1 flex-col gap-6 px-6 py-10 md:px-8">
+      <PageHeader
+        title="Fila de posts"
+        description="Acompanhe o pipeline de conteúdo, do rascunho à aprovação."
+        actions={
           <PostFormDialog
             mode="create"
             artists={artists}
             socialAccounts={socialAccounts}
             triggerLabel="Novo post"
           />
-          <form action={logout}>
-            <Button type="submit" variant="outline">
-              Sair
-            </Button>
-          </form>
-        </div>
-      </div>
+        }
+      />
 
       {profile && (
         <KanbanBoard
