@@ -6,7 +6,9 @@
 
 **Architecture:** As páginas atuais são movidas para um route group `app/(dashboard)/` (sem mudança de URL) com um `layout.tsx` compartilhado que monta o componente oficial `Sidebar` do shadcn/ui em torno de `{children}`. Um componente `AppSidebar` (client) recebe o papel do usuário via prop e filtra os itens de menu; o rodapé da sidebar substitui os botões "Sair" duplicados que hoje vivem em `/conteudo` e `/aprovacao`.
 
-**Tech Stack:** Next.js App Router (route groups), shadcn/ui (`style: base-nova`, primitivas `@base-ui/react`), Tailwind v4, lucide-react.
+**Direção visual (adicionada após aprovação inicial da spec):** além de funcional, a sidebar e a moldura de cada página devem ficar mais limpas e intuitivas — agrupando itens de menu por função (operação × administração, refletindo as personas do `docs/CLAUDE.md`), com hierarquia visual clara (rótulos de grupo, separadores, estado ativo com o acento verde-limão `#96DB12`) e um cabeçalho de página consistente entre `/conteudo`, `/aprovacao` e `/admin` via um componente `PageHeader` compartilhado, em vez de cada página remontar sua própria estrutura de título. Mantém a identidade já decidida (dark, estilo Linear/shadcn, acento `#96DB12`) — não introduz paleta nova. **Escopo confirmado com o usuário:** o redesign cobre a sidebar e a moldura/cabeçalho das páginas; o Kanban (`components/kanban/*`) e as tabelas de artistas/contas/usuários ficam de fora desta etapa.
+
+**Tech Stack:** Next.js App Router (route groups), shadcn/ui (`style: base-nova`, primitivas `@base-ui/react`), Tailwind v4, lucide-react. Para a etapa de design, usar as skills `frontend-design` e `ui-ux-pro-max` durante a implementação da sidebar/página, e os agents `ui-ux-designer` (revisão de UI/UX) e `screenshot-ui-analyzer` / skill `screenshot` (captura e análise visual) para a revisão pós-implementação.
 
 **Nota sobre testes:** este repositório não tem test runner configurado (sem Jest/Vitest/Playwright em `package.json`) — o padrão já estabelecido nos milestones do `PLAN.md` é verificar com `npm run build`, `npx tsc --noEmit`, `npm run lint` e um checklist manual. Este plano segue o mesmo padrão em vez de forçar TDD onde não há infraestrutura de teste.
 
@@ -111,51 +113,73 @@ export type NavItem = {
   roles: Role[];
 };
 
-export const NAV_ITEMS: NavItem[] = [
+export type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+// Dois grupos deliberadamente: "Operação" é o dia a dia das personas equipe
+// de conteúdo/aprovador; "Administração" é configuração, só admin (ver
+// personas em docs/CLAUDE.md). Separar visualmente os dois deixa claro que
+// um não depende do outro pra operar o pipeline de posts.
+const NAV_GROUPS: NavGroup[] = [
   {
-    title: "Fila de posts",
-    url: "/conteudo",
-    icon: LayoutGrid,
-    roles: ["admin", "aprovador", "equipe_conteudo"],
+    label: "Operação",
+    items: [
+      {
+        title: "Fila de posts",
+        url: "/conteudo",
+        icon: LayoutGrid,
+        roles: ["admin", "aprovador", "equipe_conteudo"],
+      },
+      {
+        title: "Fila de aprovação",
+        url: "/aprovacao",
+        icon: CheckSquare,
+        roles: ["admin", "aprovador"],
+      },
+    ],
   },
   {
-    title: "Fila de aprovação",
-    url: "/aprovacao",
-    icon: CheckSquare,
-    roles: ["admin", "aprovador"],
-  },
-  {
-    title: "Painel admin",
-    url: "/admin",
-    icon: Shield,
-    roles: ["admin"],
-  },
-  {
-    title: "Artistas",
-    url: "/admin/artistas",
-    icon: Disc3,
-    roles: ["admin"],
-  },
-  {
-    title: "Contas sociais",
-    url: "/admin/contas",
-    icon: Share2,
-    roles: ["admin"],
-  },
-  {
-    title: "Usuários",
-    url: "/admin/usuarios",
-    icon: Users,
-    roles: ["admin"],
+    label: "Administração",
+    items: [
+      {
+        title: "Painel admin",
+        url: "/admin",
+        icon: Shield,
+        roles: ["admin"],
+      },
+      {
+        title: "Artistas",
+        url: "/admin/artistas",
+        icon: Disc3,
+        roles: ["admin"],
+      },
+      {
+        title: "Contas sociais",
+        url: "/admin/contas",
+        icon: Share2,
+        roles: ["admin"],
+      },
+      {
+        title: "Usuários",
+        url: "/admin/usuarios",
+        icon: Users,
+        roles: ["admin"],
+      },
+    ],
   },
 ];
 
-export function navItemsForRole(role: Role): NavItem[] {
-  return NAV_ITEMS.filter((item) => item.roles.includes(role));
+export function navGroupsForRole(role: Role): NavGroup[] {
+  return NAV_GROUPS.map((group) => ({
+    label: group.label,
+    items: group.items.filter((item) => item.roles.includes(role)),
+  })).filter((group) => group.items.length > 0);
 }
 ```
 
-Essa lista espelha exatamente `roleAllowsRoute()` em `lib/supabase/proxy.ts:14-23` — se as regras de acesso mudarem lá, atualize aqui também.
+Essa lista espelha exatamente `roleAllowsRoute()` em `lib/supabase/proxy.ts:14-23` — se as regras de acesso mudarem lá, atualize aqui também. `navGroupsForRole` descarta grupos vazios (ex: `equipe_conteudo` nunca vê o grupo "Administração" renderizado, nem um cabeçalho de grupo vazio).
 
 **Step 2: Verificar tipos**
 
@@ -177,6 +201,8 @@ git commit -m "feat: config de itens de navegação da sidebar por papel"
 **Files:**
 - Create: `components/dashboard/app-sidebar.tsx`
 
+**Antes de escrever:** invoque a skill `frontend-design` (e opcionalmente `ui-ux-pro-max`) para calibrar os detalhes finos de espaçamento/hierarquia antes de sair copiando o código abaixo ao pé da letra — o snippet é o baseline funcional, não a palavra final de estilo. Direção: estilo Linear (denso, mas respirável), grupos com rótulo em caixa alta/tracking largo e cor `muted-foreground`, item ativo com fundo `sidebar-accent` + uma barra fina à esquerda na cor `sidebar-primary` (o verde-limão), ícones com contraste consistente entre estado ativo/inativo.
+
 **Step 1: Escrever o componente**
 
 ```typescript
@@ -187,70 +213,98 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { logout } from "@/app/login/actions";
-import { navItemsForRole } from "@/components/dashboard/nav-items";
+import { navGroupsForRole } from "@/components/dashboard/nav-items";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import type { Profile } from "@/lib/types/profile";
 import { ROLE_LABELS } from "@/lib/types/profile";
 
 export function AppSidebar({ profile }: { profile: Profile }) {
   const pathname = usePathname();
-  const items = navItemsForRole(profile.role);
+  const groups = navGroupsForRole(profile.role);
+  const displayName = profile.full_name ?? profile.email;
+  const initial = displayName.charAt(0).toUpperCase();
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <span className="px-2 py-1 text-sm font-semibold tracking-tight text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-          Puzzle Records
-        </span>
+        <div className="flex items-center gap-2 px-2 py-1.5">
+          <span
+            aria-hidden
+            className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground"
+          >
+            P
+          </span>
+          <div className="flex flex-col leading-none group-data-[collapsible=icon]:hidden">
+            <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">
+              Puzzle Records
+            </span>
+            <span className="text-xs text-muted-foreground">Painel</span>
+          </div>
+        </div>
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.url}
-                    tooltip={item.title}
-                  >
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {groups.map((group, index) => (
+          <SidebarGroup key={group.label}>
+            {index > 0 && <SidebarSeparator className="mb-2" />}
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.url}
+                      tooltip={item.title}
+                    >
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter>
+        <SidebarSeparator className="mb-2" />
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex flex-col gap-0.5 px-2 py-1 group-data-[collapsible=icon]:hidden">
-              <span className="truncate text-sm font-medium text-sidebar-foreground">
-                {profile.full_name ?? profile.email}
+            <div className="flex items-center gap-2 px-2 py-1 group-data-[collapsible=icon]:hidden">
+              <span
+                aria-hidden
+                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground"
+              >
+                {initial}
               </span>
-              <span className="text-xs text-muted-foreground">
-                {ROLE_LABELS[profile.role]}
-              </span>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate text-sm font-medium text-sidebar-foreground">
+                  {displayName}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {ROLE_LABELS[profile.role]}
+                </span>
+              </div>
             </div>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <form action={logout}>
+            <form action={logout} className="contents">
               <SidebarMenuButton type="submit" tooltip="Sair">
                 <LogOut />
                 <span>Sair</span>
@@ -264,13 +318,15 @@ export function AppSidebar({ profile }: { profile: Profile }) {
 }
 ```
 
-Nota: `pathname === item.url` é suficiente aqui porque todas as rotas de nível admin (`/admin/artistas` etc.) são folhas — não há sub-rotas abaixo delas que precisariam de um match por prefixo. Se isso mudar no futuro, troque por `pathname.startsWith(item.url)` com cuidado para `/admin` não capturar `/admin/artistas`.
+Notas:
+- `pathname === item.url` é suficiente aqui porque todas as rotas de nível admin (`/admin/artistas` etc.) são folhas — não há sub-rotas abaixo delas que precisariam de um match por prefixo. Se isso mudar no futuro, troque por `pathname.startsWith(item.url)` com cuidado para `/admin` não capturar `/admin/artistas`.
+- O quadrado "P" no header é um placeholder de logo minimalista usando só cor (sem depender de um asset de imagem) — se existir um SVG de logo do projeto reaproveitável em telas pequenas (ver `puzzle-records-logo.svg`, já usado no M5 em `lib/renderer`), avalie trocar por ele; senão o placeholder de cor já cobre a necessidade sem gerar dependência nova.
 
 **Step 2: Verificar tipos**
 
 Run: `npx tsc --noEmit`
 
-Expected: sem erros (o componente ainda não está montado em nenhuma página, mas deve compilar isoladamente). Se `SidebarMenuButton` não aceitar `type="submit"` diretamente no TS, ajuste envolvendo com `asChild` e um `<button>` interno — confira a assinatura gerada em `components/ui/sidebar.tsx` pelo Task 1 antes de decidir.
+Expected: sem erros (o componente ainda não está montado em nenhuma página, mas deve compilar isoladamente). Se `SidebarMenuButton` não aceitar `type="submit"` diretamente no TS, ajuste envolvendo com `asChild` e um `<button>` interno — confira a assinatura gerada em `components/ui/sidebar.tsx` pelo Task 1 antes de decidir. Se `SidebarGroupLabel`, `SidebarSeparator` não existirem no componente instalado no Task 1, confira o nome exato exportado por `components/ui/sidebar.tsx` (a CLI do shadcn pode nomear diferente entre versões) e ajuste os imports.
 
 **Step 3: Commit**
 
@@ -320,7 +376,7 @@ export default async function DashboardLayout({
 }
 ```
 
-O botão `SidebarTrigger` só aparece em telas estreitas (`md:hidden`) — em telas largas, o padrão do componente shadcn já expõe um jeito de colapsar a sidebar direto no header dela (definido no Task 4/componente base); confirme visualmente no Task 8 e adicione um `SidebarTrigger` fixo ali também se o componente base não trouxer um por padrão.
+O botão `SidebarTrigger` só aparece em telas estreitas (`md:hidden`) — em telas largas, o padrão do componente shadcn já expõe um jeito de colapsar a sidebar direto no header dela (definido no Task 4/componente base); confirme visualmente no Task 10 (revisão visual) e no Task 11 (checklist manual), e adicione um `SidebarTrigger` fixo ali também se o componente base não trouxer um por padrão.
 
 **Step 2: Verificar tipos e build**
 
@@ -337,18 +393,75 @@ git commit -m "feat: layout compartilhado do route group (dashboard) com sidebar
 
 ---
 
-### Task 6: Remover cabeçalho duplicado de `/conteudo`
+### Task 6: Criar componente `PageHeader` compartilhado
+
+**Files:**
+- Create: `components/dashboard/page-header.tsx`
+
+Hoje `/conteudo`, `/aprovacao` e `/admin` cada um remonta sua própria estrutura de título com classes soltas repetidas (`flex flex-wrap items-center justify-between gap-4`, `text-2xl font-semibold text-foreground`, etc). Extrair um componente único deixa as três páginas visualmente consistentes e evita divergência futura.
+
+**Step 1: Escrever o componente**
+
+Invoque a skill `frontend-design` para refinar espaçamento/tipografia antes de finalizar — o baseline abaixo é o esqueleto funcional.
+
+```typescript
+import type { ReactNode } from "react";
+
+export function PageHeader({
+  title,
+  description,
+  actions,
+}: {
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-6">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          {title}
+        </h1>
+        {description && (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+      {actions && (
+        <div className="flex shrink-0 items-center gap-3">{actions}</div>
+      )}
+    </div>
+  );
+}
+```
+
+**Step 2: Verificar tipos**
+
+Run: `npx tsc --noEmit`
+
+Expected: sem erros (componente ainda não usado em nenhuma página).
+
+**Step 3: Commit**
+
+```bash
+git add components/dashboard/page-header.tsx
+git commit -m "feat: componente PageHeader compartilhado entre páginas do dashboard"
+```
+
+---
+
+### Task 7: Remover cabeçalho duplicado de `/conteudo`
 
 **Files:**
 - Modify: `app/(dashboard)/conteudo/page.tsx`
 
-**Step 1: Simplificar o cabeçalho**
+**Step 1: Simplificar o cabeçalho usando `PageHeader`**
 
 Substituir o bloco atual (linhas 1-43 do arquivo original, que importava `logout`, `Button`, `ROLE_LABELS` só para o badge/botão duplicados):
 
 ```typescript
 import { KanbanBoard } from "@/components/kanban/board";
 import { PostFormDialog } from "@/components/kanban/post-form-dialog";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { listArtists, listPosts, listSocialAccounts } from "@/lib/posts/queries";
 
@@ -363,18 +476,19 @@ export default async function ConteudoPage() {
   ]);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 px-6 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-foreground">
-          Fila de posts
-        </h1>
-        <PostFormDialog
-          mode="create"
-          artists={artists}
-          socialAccounts={socialAccounts}
-          triggerLabel="Novo post"
-        />
-      </div>
+    <div className="flex flex-1 flex-col gap-6 px-6 py-10 md:px-8">
+      <PageHeader
+        title="Fila de posts"
+        description="Acompanhe o pipeline de conteúdo, do rascunho à aprovação."
+        actions={
+          <PostFormDialog
+            mode="create"
+            artists={artists}
+            socialAccounts={socialAccounts}
+            triggerLabel="Novo post"
+          />
+        }
+      />
 
       {profile && (
         <KanbanBoard
@@ -402,20 +516,21 @@ Expected: sem erros, sem imports não usados (`logout`, `Button`, `ROLE_LABELS` 
 
 ```bash
 git add "app/(dashboard)/conteudo/page.tsx"
-git commit -m "refactor: remove cabeçalho duplicado de /conteudo (agora na sidebar)"
+git commit -m "refactor: usa PageHeader em /conteudo, remove cabeçalho duplicado"
 ```
 
 ---
 
-### Task 7: Remover cabeçalho duplicado de `/aprovacao`
+### Task 8: Remover cabeçalho duplicado de `/aprovacao`
 
 **Files:**
 - Modify: `app/(dashboard)/aprovacao/page.tsx`
 
-**Step 1: Simplificar o cabeçalho**
+**Step 1: Simplificar o cabeçalho usando `PageHeader`**
 
 ```typescript
 import { KanbanBoard } from "@/components/kanban/board";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { listArtists, listPosts, listSocialAccounts } from "@/lib/posts/queries";
 
@@ -430,10 +545,11 @@ export default async function AprovacaoPage() {
   ]);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 px-6 py-10">
-      <h1 className="text-2xl font-semibold text-foreground">
-        Fila de aprovação
-      </h1>
+    <div className="flex flex-1 flex-col gap-6 px-6 py-10 md:px-8">
+      <PageHeader
+        title="Fila de aprovação"
+        description="Revise, edite ou rejeite os posts pendentes de aprovação."
+      />
 
       {profile && (
         <KanbanBoard
@@ -459,12 +575,12 @@ Expected: sem erros, sem imports não usados (`logout`, `Button`, `ROLE_LABELS`)
 
 ```bash
 git add "app/(dashboard)/aprovacao/page.tsx"
-git commit -m "refactor: remove cabeçalho duplicado de /aprovacao (agora na sidebar)"
+git commit -m "refactor: usa PageHeader em /aprovacao, remove cabeçalho duplicado"
 ```
 
 ---
 
-### Task 8: Remover links soltos e logout de `/admin`
+### Task 9: Remover links soltos e logout de `/admin`
 
 **Files:**
 - Modify: `app/(dashboard)/admin/page.tsx`
@@ -510,7 +626,45 @@ git commit -m "refactor: remove links e logout duplicados de /admin (agora na si
 
 ---
 
-### Task 9: Verificação final e checklist manual
+### Task 10: Revisão visual com o agent `ui-ux-designer`
+
+**Files:** nenhum código novo — task de revisão; pode gerar ajustes pontuais em `components/dashboard/app-sidebar.tsx`, `components/dashboard/page-header.tsx` e nos três `page.tsx` do Task 7-9 se a revisão apontar problema.
+
+**Step 1: Subir o servidor de dev e capturar screenshots**
+
+Use a skill `screenshot` (ou `webapp-testing`) para capturar, com o servidor `npm run dev` rodando:
+- `/conteudo` logado como `admin` (sidebar expandida)
+- `/conteudo` com a sidebar colapsada (ícone-only)
+- `/aprovacao` logado como `aprovador` (menos itens no grupo "Operação", sem grupo "Administração")
+- `/admin` logado como `admin` (todos os itens, ambos os grupos)
+- a sidebar em modo drawer (viewport estreito, ex: 375px de largura)
+
+**Step 2: Rodar o agent `ui-ux-designer`**
+
+Passe os screenshots capturados no Step 1 para o agent `ui-ux-designer`, com contexto: painel interno dark-mode estilo Linear/shadcn, acento verde-limão `#96DB12` (`docs/CLAUDE.md`), sidebar recém-criada com dois grupos ("Operação"/"Administração"), pedindo uma lista de problemas concretos de hierarquia visual, contraste, espaçamento ou clareza — não uma repaginação completa, já que a paleta e a estrutura de grupos já foram decididas.
+
+**Step 3: Aplicar correções pontuais**
+
+Para cada item da lista do agent que for um ajuste pequeno e de baixo risco (espaçamento, peso de fonte, contraste, alinhamento), aplique diretamente nos arquivos apontados. Para qualquer sugestão que implique mudar estrutura (novos grupos, mover itens, trocar o padrão do `PageHeader`), pare e cheque com o usuário antes de aplicar — está fora do escopo confirmado desta etapa.
+
+**Step 4: Verificar tipos após os ajustes**
+
+Run: `npx tsc --noEmit`
+
+Expected: sem erros.
+
+**Step 5: Commit**
+
+```bash
+git add -A
+git commit -m "style: ajustes visuais da sidebar após revisão do ui-ux-designer"
+```
+
+(só necessário se o Step 3 tiver gerado alguma mudança; se a revisão não apontar nada de baixo risco a corrigir, pule o commit.)
+
+---
+
+### Task 11: Verificação final e checklist manual
 
 **Files:** nenhum (só verificação)
 
@@ -522,9 +676,10 @@ Expected: as três saem limpas (nenhum erro novo; warnings pré-existentes de `<
 
 **Step 2: Checklist manual (rodar `npm run dev` e testar no navegador)**
 
-- [ ] Logar como `equipe_conteudo`: sidebar mostra só "Fila de posts"; digitar `/aprovacao` ou `/admin` na URL continua redirecionando para `/conteudo` (comportamento do `proxy.ts`, não deve mudar).
-- [ ] Logar como `aprovador`: sidebar mostra "Fila de posts" + "Fila de aprovação", sem itens de admin.
-- [ ] Logar como `admin`: sidebar mostra os 6 itens.
+- [ ] Logar como `equipe_conteudo`: sidebar mostra só o grupo "Operação" com "Fila de posts" (sem o grupo "Administração" aparecer, nem vazio); digitar `/aprovacao` ou `/admin` na URL continua redirecionando para `/conteudo` (comportamento do `proxy.ts`, não deve mudar).
+- [ ] Logar como `aprovador`: sidebar mostra "Fila de posts" + "Fila de aprovação" no grupo "Operação", sem o grupo "Administração".
+- [ ] Logar como `admin`: sidebar mostra os dois grupos com os 6 itens no total.
+- [ ] `/conteudo`, `/aprovacao` e `/admin` têm cabeçalhos visualmente consistentes entre si (mesma tipografia/espaçamento do `PageHeader`).
 - [ ] Clicar em cada item do menu: navega para a rota certa e destaca o item ativo.
 - [ ] Colapsar a sidebar (botão de colapso do componente shadcn) e recarregar a página (F5): estado de colapso persiste.
 - [ ] Redimensionar a janela para largura de celular (ou usar o modo device do DevTools): sidebar vira drawer, acionado pelo botão hambúrguer (`SidebarTrigger`) que aparece no header mobile.
@@ -542,8 +697,9 @@ git commit -m "fix: ajustes de checklist manual da sidebar"
 
 ---
 
-## Fora de escopo (confirmado na spec)
+## Fora de escopo (confirmado na spec e reconfirmado na etapa de redesign)
 
 - Nenhuma mudança em `lib/supabase/proxy.ts` ou nas políticas de RLS.
 - Sem busca, breadcrumbs ou notificações no header (M10 do `PLAN.md`).
 - `app/admin/artistas/page.tsx`, `app/admin/contas/page.tsx`, `app/admin/usuarios/page.tsx` só são movidos, sem mudança de conteúdo interno (suas tabelas/formulários já são específicos da página, sem duplicação com a sidebar).
+- O redesign desta etapa cobre a sidebar (`AppSidebar`) e a moldura/cabeçalho das páginas (`PageHeader`) — **não** inclui o Kanban (`components/kanban/*`) nem as tabelas de artistas/contas/usuários, que ficam como estão até uma etapa futura dedicada, caso o usuário peça.
