@@ -196,13 +196,15 @@ export function PostCard({
 
         {canDecide(post, role) && <RejectDialog postId={post.id} />}
 
-        {post.headline && post.template && (
-          <form action={regenerateArt.bind(null, post.id)}>
-            <Button type="submit" size="sm" variant="outline">
-              {post.rendered_art_url ? "Regenerar arte" : "Gerar arte"}
-            </Button>
-          </form>
-        )}
+        {post.headline &&
+          post.template &&
+          canEdit(post, role, currentUserId) && (
+            <form action={regenerateArt.bind(null, post.id)}>
+              <Button type="submit" size="sm" variant="outline">
+                {post.rendered_art_url ? "Regenerar arte" : "Gerar arte"}
+              </Button>
+            </form>
+          )}
 
         {canDelete(post, role, currentUserId) && (
           <form action={deletePost.bind(null, post.id)}>
