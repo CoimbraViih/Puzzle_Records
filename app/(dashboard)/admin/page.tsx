@@ -1,7 +1,3 @@
-import Link from "next/link";
-
-import { logout } from "@/app/login/actions";
-import { Button } from "@/components/ui/button";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { ROLE_LABELS } from "@/lib/types/profile";
 
@@ -18,29 +14,6 @@ export default async function AdminPage() {
       <h1 className="text-3xl font-semibold text-foreground">
         Bem-vindo, admin
       </h1>
-      <Link
-        href="/admin/usuarios"
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        Gerenciar usuários
-      </Link>
-      <Link
-        href="/admin/artistas"
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        Artistas
-      </Link>
-      <Link
-        href="/admin/contas"
-        className="text-sm text-primary underline-offset-4 hover:underline"
-      >
-        Contas sociais
-      </Link>
-      <form action={logout}>
-        <Button type="submit" variant="outline">
-          Sair
-        </Button>
-      </form>
     </div>
   );
 }
