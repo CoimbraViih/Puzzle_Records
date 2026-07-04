@@ -5,6 +5,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/types/profile";
 
+export const dynamic = "force-dynamic";
+
 type UserRow = { id: string; email: string; role: Role; created_at: string };
 
 export default function UsuariosPage() {
