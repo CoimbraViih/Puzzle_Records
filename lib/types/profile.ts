@@ -11,9 +11,9 @@ export interface Profile {
 }
 
 export const ROLE_HOME: Record<Role, string> = {
-  admin: "/admin",
-  aprovador: "/aprovacao",
-  equipe_conteudo: "/conteudo",
+  admin: "/dashboard",
+  aprovador: "/dashboard",
+  equipe_conteudo: "/dashboard",
 };
 
 export const ROLE_LABELS: Record<Role, string> = {

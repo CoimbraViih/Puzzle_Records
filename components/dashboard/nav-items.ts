@@ -1,5 +1,13 @@
 import type { LucideIcon } from "lucide-react";
-import { CheckSquare, Disc3, LayoutGrid, Share2, Shield, Users } from "lucide-react";
+import {
+  CheckSquare,
+  Disc3,
+  LayoutDashboard,
+  LayoutGrid,
+  Share2,
+  Shield,
+  Users,
+} from "lucide-react";
 
 import type { Role } from "@/lib/types/profile";
 
@@ -23,6 +31,12 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Operação",
     items: [
+      {
+        title: "Visão geral",
+        url: "/dashboard",
+        icon: LayoutDashboard,
+        roles: ["admin", "aprovador", "equipe_conteudo"],
+      },
       {
         title: "Fila de posts",
         url: "/conteudo",

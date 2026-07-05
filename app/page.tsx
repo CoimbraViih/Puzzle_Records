@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import { SupabaseStatus } from "@/components/supabase-status";
 
@@ -21,7 +23,12 @@ export default function Home() {
 
         <SupabaseStatus />
 
-        <Button variant="default" size="default">
+        <Button
+          variant="default"
+          size="default"
+          nativeButton={false}
+          render={<Link href="/login" />}
+        >
           Começar
         </Button>
       </main>
