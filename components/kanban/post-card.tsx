@@ -14,15 +14,19 @@ import {
   type SocialAccount,
 } from "@/lib/types/social-account";
 
+import { InstagramPreviewDialog } from "./instagram-preview";
 import { PostFormDialog } from "./post-form-dialog";
 import { RejectDialog } from "./reject-dialog";
 
 function canEdit(post: PostWithRelations, role: Role, userId: string) {
   if (role === "admin") return true;
   if (role === "equipe_conteudo") {
+    const owned = post.created_by === userId || post.created_by === null;
     return (
-      post.created_by === userId &&
-      (post.status === "rascunho" || post.status === "rejeitado")
+      owned &&
+      (post.status === "pendente" ||
+        post.status === "rascunho" ||
+        post.status === "rejeitado")
     );
   }
   if (role === "aprovador") return post.status === "pendente_aprovacao";
@@ -40,9 +44,12 @@ function canDelete(post: PostWithRelations, role: Role, userId: string) {
 
 function canSubmit(post: PostWithRelations, role: Role, userId: string) {
   const ownedByAuthor =
-    role === "equipe_conteudo" && post.created_by === userId;
+    role === "equipe_conteudo" &&
+    (post.created_by === userId || post.created_by === null);
   const eligibleStatus =
-    post.status === "rascunho" || post.status === "rejeitado";
+    post.status === "pendente" ||
+    post.status === "rascunho" ||
+    post.status === "rejeitado";
   return (ownedByAuthor || role === "admin") && eligibleStatus;
 }
 
@@ -164,6 +171,12 @@ export function PostCard({
         </p>
       )}
 
+      {post.notification_error && (
+        <p className="rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-600 dark:text-amber-400">
+          Notificação por e-mail não enviada: {post.notification_error}
+        </p>
+      )}
+
       <div className="mt-2 flex flex-wrap gap-2">
         {canEdit(post, role, currentUserId) && (
           <PostFormDialog
@@ -212,6 +225,10 @@ export function PostCard({
               Excluir
             </Button>
           </form>
+        )}
+
+        {(post.rendered_art_signed_url || post.media_signed_url) && (
+          <InstagramPreviewDialog post={post} />
         )}
       </div>
     </div>

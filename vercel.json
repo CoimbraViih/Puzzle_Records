@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/generate-art",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/sla-alert",
+      "schedule": "*/30 * * * *"
     }
   ]
 }
