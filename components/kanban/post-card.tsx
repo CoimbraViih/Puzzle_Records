@@ -120,7 +120,9 @@ export function PostCard({
         {post.caption ?? "Aguardando legenda da IA (M4)"}
       </p>
 
-      {post.copy_variations && post.copy_variations.length > 1 && (
+      {post.copy_variations &&
+        post.copy_variations.length > 1 &&
+        canEdit(post, role, currentUserId) && (
         <div className="flex flex-wrap gap-1">
           {post.copy_variations.map((variation, index) => (
             <form key={index} action={selectCopyVariation.bind(null, post.id, index)}>

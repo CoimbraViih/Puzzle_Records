@@ -18,11 +18,17 @@ export async function GET(request: Request) {
   const supabase = createServiceClient();
   const cutoff = new Date(Date.now() - SLA_HOURS * 60 * 60 * 1000).toISOString();
 
+  // `submitted_for_approval_at` deveria sempre existir para um post em
+  // pendente_aprovacao (submitForApproval sempre grava), mas trata o caso
+  // de uma linha sem esse carimbo (ex: dado legado) como vencida também —
+  // um `.lt()` puro nunca é verdadeiro contra null, o que deixaria esse
+  // post preso sem alerta para sempre (justamente o cenário que este cron
+  // existe para evitar).
   const { data: overdue, error } = await supabase
     .from("posts")
     .select("id, headline")
     .eq("status", "pendente_aprovacao")
-    .lt("submitted_for_approval_at", cutoff)
+    .or(`submitted_for_approval_at.is.null,submitted_for_approval_at.lt.${cutoff}`)
     .is("sla_alert_sent_at", null);
 
   if (error) {
