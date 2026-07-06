@@ -14,6 +14,7 @@ import {
   type SocialAccount,
 } from "@/lib/types/social-account";
 
+import { InstagramPreviewDialog } from "./instagram-preview";
 import { PostFormDialog } from "./post-form-dialog";
 import { RejectDialog } from "./reject-dialog";
 
@@ -218,6 +219,10 @@ export function PostCard({
               Excluir
             </Button>
           </form>
+        )}
+
+        {(post.rendered_art_signed_url || post.media_signed_url) && (
+          <InstagramPreviewDialog post={post} />
         )}
       </div>
     </div>
