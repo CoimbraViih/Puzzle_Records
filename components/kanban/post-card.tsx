@@ -3,6 +3,7 @@ import {
   approvePost,
   deletePost,
   regenerateArt,
+  retryPublish,
   selectCopyVariation,
   submitForApproval,
 } from "@/lib/posts/actions";
@@ -57,6 +58,14 @@ function canDecide(post: PostWithRelations, role: Role) {
   return (
     (role === "aprovador" || role === "admin") &&
     post.status === "pendente_aprovacao"
+  );
+}
+
+function canRetryPublish(post: PostWithRelations, role: Role) {
+  return (
+    (role === "aprovador" || role === "admin") &&
+    post.status === "aprovado" &&
+    Boolean(post.publish_error)
   );
 }
 
@@ -149,6 +158,19 @@ export function PostCard({
         {post.artist && ` · ${post.artist.name} (${post.artist.handle})`}
       </p>
 
+      {post.status === "publicado" && post.post_url && (
+        <a
+          href={post.post_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-primary underline"
+        >
+          Ver post publicado
+          {post.published_at &&
+            ` — ${new Date(post.published_at).toLocaleString("pt-BR")}`}
+        </a>
+      )}
+
       {post.status === "rejeitado" && post.rejection_reason && (
         <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
           Motivo: {post.rejection_reason}
@@ -176,6 +198,12 @@ export function PostCard({
       {post.notification_error && (
         <p className="rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-600 dark:text-amber-400">
           Notificação por e-mail não enviada: {post.notification_error}
+        </p>
+      )}
+
+      {post.publish_error && (
+        <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
+          Falha ao publicar: {post.publish_error}
         </p>
       )}
 
@@ -210,6 +238,14 @@ export function PostCard({
         )}
 
         {canDecide(post, role) && <RejectDialog postId={post.id} />}
+
+        {canRetryPublish(post, role) && (
+          <form action={retryPublish.bind(null, post.id)}>
+            <Button type="submit" size="sm" variant="outline">
+              Tentar publicar novamente
+            </Button>
+          </form>
+        )}
 
         {post.headline &&
           post.template &&
