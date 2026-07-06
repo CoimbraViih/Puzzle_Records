@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
+import { notifyApprovers } from "@/lib/email/notifyApprovers";
 import { renderArt, ArtRenderError } from "@/lib/renderer/renderArt";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -203,8 +204,30 @@ async function updateStatus(
 }
 
 export async function submitForApproval(postId: string, _formData: FormData) {
-  const error = await updateStatus(postId, "pendente_aprovacao");
-  if (!error) revalidatePostPages();
+  const error = await updateStatus(postId, "pendente_aprovacao", {
+    submitted_for_approval_at: new Date().toISOString(),
+    sla_alert_sent_at: null,
+  });
+  if (error) return;
+
+  revalidatePostPages();
+
+  const { data: post } = await (await createClient())
+    .from("posts")
+    .select("id, headline")
+    .eq("id", postId)
+    .single();
+
+  const notificationError = await notifyApprovers({
+    kind: "novo_post",
+    postId,
+    headline: post?.headline ?? null,
+  });
+  if (notificationError) {
+    await updateStatus(postId, "pendente_aprovacao", {
+      notification_error: notificationError,
+    });
+  }
 }
 
 export async function approvePost(postId: string, _formData: FormData) {
@@ -214,6 +237,8 @@ export async function approvePost(postId: string, _formData: FormData) {
   const error = await updateStatus(postId, "aprovado", {
     approved_by: profile.id,
     rejection_reason: null,
+    submitted_for_approval_at: null,
+    sla_alert_sent_at: null,
   });
   if (!error) revalidatePostPages();
 }
@@ -237,7 +262,13 @@ export async function rejectPost(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("posts")
-    .update({ status: "rejeitado", approved_by: profile.id, rejection_reason: reason })
+    .update({
+      status: "rejeitado",
+      approved_by: profile.id,
+      rejection_reason: reason,
+      submitted_for_approval_at: null,
+      sla_alert_sent_at: null,
+    })
     .eq("id", postId)
     .select("id");
 
