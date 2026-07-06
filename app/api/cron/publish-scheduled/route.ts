@@ -77,6 +77,10 @@ export async function GET(request: Request) {
           `[publish-scheduled] falha ao gravar publicacao do post ${post.id}:`,
           error.message
         );
+        await recordPublishError(
+          post.id,
+          `Publicado no Zernio (${postUrl}) mas falha ao gravar o status — verificar manualmente.`
+        );
         continue;
       }
       published += 1;
