@@ -49,6 +49,8 @@ export interface Post {
   status: PostStatus;
   scheduled_at: string | null;
   rejection_reason: string | null;
+  submitted_for_approval_at: string | null;
+  sla_alert_sent_at: string | null;
   /** Preenchido pelo M3 quando artista/conta social do Drive não têm match. */
   ingestion_warning: string | null;
   /** Preenchidos pelo M3 a partir do JSON de metadado; consumidos pelo M4. */
@@ -62,6 +64,8 @@ export interface Post {
   rendered_art_url: string | null;
   /** Preenchido pelo M5 quando a geração de arte falha — nunca falha em silêncio. */
   art_generation_error: string | null;
+  /** Preenchido quando a notificação de SLA falha — nunca falha em silêncio. */
+  notification_error: string | null;
   created_by: string | null;
   approved_by: string | null;
   created_at: string;
