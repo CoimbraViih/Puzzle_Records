@@ -109,6 +109,7 @@ export async function GET(request: Request) {
           status: "publicado",
           published_at: new Date().toISOString(),
           post_url: postUrl,
+          publish_error: null,
         })
         .eq("id", post.id);
 
