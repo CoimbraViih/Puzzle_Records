@@ -20,9 +20,12 @@ import { RejectDialog } from "./reject-dialog";
 function canEdit(post: PostWithRelations, role: Role, userId: string) {
   if (role === "admin") return true;
   if (role === "equipe_conteudo") {
+    const owned = post.created_by === userId || post.created_by === null;
     return (
-      post.created_by === userId &&
-      (post.status === "rascunho" || post.status === "rejeitado")
+      owned &&
+      (post.status === "pendente" ||
+        post.status === "rascunho" ||
+        post.status === "rejeitado")
     );
   }
   if (role === "aprovador") return post.status === "pendente_aprovacao";
@@ -40,9 +43,12 @@ function canDelete(post: PostWithRelations, role: Role, userId: string) {
 
 function canSubmit(post: PostWithRelations, role: Role, userId: string) {
   const ownedByAuthor =
-    role === "equipe_conteudo" && post.created_by === userId;
+    role === "equipe_conteudo" &&
+    (post.created_by === userId || post.created_by === null);
   const eligibleStatus =
-    post.status === "rascunho" || post.status === "rejeitado";
+    post.status === "pendente" ||
+    post.status === "rascunho" ||
+    post.status === "rejeitado";
   return (ownedByAuthor || role === "admin") && eligibleStatus;
 }
 
