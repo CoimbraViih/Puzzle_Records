@@ -171,6 +171,12 @@ export function PostCard({
         </p>
       )}
 
+      {post.notification_error && (
+        <p className="rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-600 dark:text-amber-400">
+          Notificação por e-mail não enviada: {post.notification_error}
+        </p>
+      )}
+
       <div className="mt-2 flex flex-wrap gap-2">
         {canEdit(post, role, currentUserId) && (
           <PostFormDialog
