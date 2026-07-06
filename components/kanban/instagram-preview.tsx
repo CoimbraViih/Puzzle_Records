@@ -89,9 +89,9 @@ export function InstagramPreview({ post }: { post: PostWithRelations }) {
  * Botão "Ver preview" + modal. O projeto não tem um primitivo shadcn/ui
  * `Dialog` (`components/ui/dialog.tsx` não existe — só `Sheet`, que é um
  * painel lateral com API diferente). Por isso este componente segue o
- * mesmo padrão manual (useState + overlay fixo) já usado em
- * `reject-dialog.tsx` e `post-form-dialog.tsx`, em vez do exemplo
- * ilustrativo do brief que assumia um `Dialog` shadcn/ui.
+ * mesmo padrão manual (useState + overlay fixo, sem fechar ao clicar no
+ * backdrop) já usado em `reject-dialog.tsx` e `post-form-dialog.tsx`, em
+ * vez do exemplo ilustrativo do brief que assumia um `Dialog` shadcn/ui.
  */
 export function InstagramPreviewDialog({ post }: { post: PostWithRelations }) {
   const [open, setOpen] = useState(false);
@@ -108,29 +108,23 @@ export function InstagramPreviewDialog({ post }: { post: PostWithRelations }) {
       </Button>
 
       {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-lg border border-border bg-background p-6"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold text-foreground">
-                Preview do post
-              </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
+          <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-lg border border-border bg-background p-6">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
+              Preview do post
+            </h2>
+
+            <InstagramPreview post={post} />
+
+            <div className="mt-4 flex justify-end gap-2">
               <Button
                 type="button"
-                variant="ghost"
-                size="sm"
+                variant="outline"
                 onClick={() => setOpen(false)}
               >
                 Fechar
               </Button>
             </div>
-
-            <InstagramPreview post={post} />
           </div>
         </div>
       )}
