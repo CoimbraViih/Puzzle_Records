@@ -63,9 +63,10 @@ function canDecide(post: PostWithRelations, role: Role) {
 
 function canRetryPublish(post: PostWithRelations, role: Role) {
   return (
-    (role === "aprovador" || role === "admin") &&
+    role === "admin" &&
     post.status === "aprovado" &&
-    Boolean(post.publish_error)
+    Boolean(post.publish_error) &&
+    !post.post_url
   );
 }
 
@@ -158,7 +159,7 @@ export function PostCard({
         {post.artist && ` · ${post.artist.name} (${post.artist.handle})`}
       </p>
 
-      {post.status === "publicado" && post.post_url && (
+      {post.post_url && (
         <a
           href={post.post_url}
           target="_blank"
