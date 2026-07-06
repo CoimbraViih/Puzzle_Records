@@ -80,6 +80,21 @@ export async function GET(request: Request) {
       continue;
     }
 
+    const { data: claimed, error: claimError } = await supabase
+      .from("posts")
+      .update({ publish_error: "Publicando..." })
+      .eq("id", post.id)
+      .eq("status", "aprovado")
+      .is("publish_error", null)
+      .is("post_url", null)
+      .select("id");
+
+    if (claimError || !claimed || claimed.length === 0) {
+      // Outra execução do cron já reivindicou este post (ou ele mudou de
+      // estado entre a listagem e aqui) — pula sem duplicar a publicação.
+      continue;
+    }
+
     try {
       const { postUrl } = await provider.publish({
         postId: post.id,

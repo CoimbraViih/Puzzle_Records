@@ -7,6 +7,7 @@ export interface PostPendingPublish {
   social_account: { zernio_account_id: string | null } | null;
 }
 
+
 export async function listPostsPendingPublish(): Promise<
   PostPendingPublish[]
 > {
@@ -21,7 +22,9 @@ export async function listPostsPendingPublish(): Promise<
     .eq("status", "aprovado")
     .eq("media_type", "image")
     .not("rendered_art_url", "is", null)
+    .not("caption", "is", null)
     .is("publish_error", null)
+    .is("post_url", null)
     .or(`scheduled_at.is.null,scheduled_at.lte.${nowIso}`);
 
   if (error) {

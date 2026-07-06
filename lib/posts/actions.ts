@@ -424,6 +424,7 @@ export async function retryPublish(postId: string, _formData: FormData) {
     .from("posts")
     .update({ publish_error: null })
     .eq("id", postId)
+    .is("post_url", null)
     .select("id");
 
   if (error || !data || data.length === 0) {
