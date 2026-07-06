@@ -64,6 +64,21 @@ export function SocialAccountForm() {
         />
       </div>
 
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor="zernio_account_id"
+          className="text-sm text-muted-foreground"
+        >
+          ID da conta no Zernio (opcional)
+        </label>
+        <input
+          id="zernio_account_id"
+          name="zernio_account_id"
+          placeholder="Preencher depois de conectar no Zernio"
+          className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+        />
+      </div>
+
       <Button type="submit" disabled={pending}>
         {pending ? "Salvando..." : "Adicionar"}
       </Button>
