@@ -4,6 +4,7 @@ export const POST_STATUSES = [
   "pendente_aprovacao",
   "aprovado",
   "rejeitado",
+  "publicado",
 ] as const;
 
 export type PostStatus = (typeof POST_STATUSES)[number];
@@ -14,6 +15,7 @@ export const POST_STATUS_LABELS: Record<PostStatus, string> = {
   pendente_aprovacao: "Pendente de aprovação",
   aprovado: "Aprovado",
   rejeitado: "Rejeitado",
+  publicado: "Publicado",
 };
 
 export const POST_TEMPLATES = ["A", "B"] as const;
@@ -66,6 +68,12 @@ export interface Post {
   art_generation_error: string | null;
   /** Preenchido quando a notificação de SLA falha — nunca falha em silêncio. */
   notification_error: string | null;
+  /** Preenchido pelo M7 quando o post é publicado com sucesso via Zernio. */
+  published_at: string | null;
+  /** Preenchido pelo M7: link do post publicado. */
+  post_url: string | null;
+  /** Preenchido pelo M7 quando a publicação falha — nunca falha em silêncio. */
+  publish_error: string | null;
   created_by: string | null;
   approved_by: string | null;
   created_at: string;

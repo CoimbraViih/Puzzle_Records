@@ -19,5 +19,7 @@ export interface SocialAccount {
   network: SocialNetwork;
   handle: string;
   display_name: string;
+  /** Preenchido pelo M7: referência da conta no Zernio (necessária para publicar). */
+  zernio_account_id: string | null;
   created_at: string;
 }
