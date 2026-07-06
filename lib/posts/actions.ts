@@ -417,3 +417,23 @@ export async function regenerateArt(postId: string) {
 
   revalidatePostPages();
 }
+
+export async function retryPublish(postId: string, _formData: FormData) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("posts")
+    .update({ publish_error: null })
+    .eq("id", postId)
+    .select("id");
+
+  if (error || !data || data.length === 0) {
+    console.error(
+      "Falha ao limpar publish_error (bloqueado por RLS ou erro do Supabase):",
+      postId,
+      error
+    );
+    return;
+  }
+
+  revalidatePostPages();
+}
