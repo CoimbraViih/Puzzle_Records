@@ -21,5 +21,7 @@ export interface SocialAccount {
   display_name: string;
   /** Preenchido pelo M7: referência da conta no Zernio (necessária para publicar). */
   zernio_account_id: string | null;
+  /** Preenchido pelo M8: horários-alvo (HH:MM) do agendador distribuído do acervo. */
+  acervo_daily_slots: string[];
   created_at: string;
 }
