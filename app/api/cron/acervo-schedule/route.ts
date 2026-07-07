@@ -66,11 +66,18 @@ export async function GET(request: Request) {
 
   // A regra de anti-repetição por artista é global (não filtra por conta), e
   // não muda entre contas — busca uma única vez fora do loop por conta.
-  const { data: recentPosts } = await supabase
+  const { data: recentPosts, error: recentPostsError } = await supabase
     .from("posts")
     .select("artist_id, scheduled_at, published_at")
     .in("status", ["aprovado", "publicado"])
     .not("artist_id", "is", null);
+
+  if (recentPostsError) {
+    console.error(
+      "[acervo-schedule] falha ao buscar posts recentes por artista:",
+      recentPostsError.message
+    );
+  }
 
   const recentArtistPosts = (recentPosts ?? [])
     .map((post) => ({
@@ -86,11 +93,18 @@ export async function GET(request: Request) {
     const slots = (account.acervo_daily_slots as string[]) ?? [];
     if (slots.length === 0) continue;
 
-    const { data: occupied } = await supabase
+    const { data: occupied, error: occupiedError } = await supabase
       .from("posts")
       .select("scheduled_at, published_at")
       .eq("social_account_id", account.id)
       .in("status", ["aprovado", "publicado"]);
+
+    if (occupiedError) {
+      console.error(
+        "[acervo-schedule] falha ao buscar horários ocupados da conta:",
+        occupiedError.message
+      );
+    }
 
     const occupiedDateTimes = (occupied ?? [])
       .map((post) => post.scheduled_at ?? post.published_at)
@@ -105,13 +119,20 @@ export async function GET(request: Request) {
 
         if (isSlotTaken(target, occupiedDateTimes)) continue;
 
-        const { data: candidates } = await supabase
+        const { data: candidates, error: candidatesError } = await supabase
           .from("posts")
           .select("id, artist_id, created_at")
           .eq("social_account_id", account.id)
           .eq("content_source", "acervo")
           .eq("status", "aprovado")
           .is("scheduled_at", null);
+
+        if (candidatesError) {
+          console.error(
+            "[acervo-schedule] falha ao buscar candidatos do acervo:",
+            candidatesError.message
+          );
+        }
 
         const chosen = pickCandidateForSlot(
           target,
@@ -136,6 +157,12 @@ export async function GET(request: Request) {
         }
 
         occupiedDateTimes.push(target);
+        if (chosen.artist_id) {
+          recentArtistPosts.push({
+            artist_id: chosen.artist_id,
+            scheduled_or_published_at: target.toISOString(),
+          });
+        }
         scheduled += 1;
       }
     }
