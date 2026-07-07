@@ -40,6 +40,22 @@ export async function createAcervoPost(
     return { error: "Selecione um arquivo de mídia." };
   }
 
+  const supabase = await createClient();
+
+  const { data: socialAccount, error: socialAccountError } = await supabase
+    .from("social_accounts")
+    .select("network")
+    .eq("id", socialAccountId)
+    .maybeSingle();
+
+  if (socialAccountError || !socialAccount) {
+    return { error: "Conta social selecionada não foi encontrada." };
+  }
+
+  if (socialAccount.network !== "instagram") {
+    return { error: "Conta social selecionada não é uma conta Instagram." };
+  }
+
   let mediaPath: string;
   try {
     mediaPath = await uploadMedia(mediaFile);
@@ -47,7 +63,6 @@ export async function createAcervoPost(
     return { error: "Falha ao enviar o arquivo de mídia. Tente novamente." };
   }
 
-  const supabase = await createClient();
   const { error } = await supabase.from("posts").insert({
     artist_id: artistId,
     social_account_id: socialAccountId,
