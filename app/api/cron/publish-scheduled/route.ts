@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getPublishingProvider, PublishError } from "@/lib/publishing";
 import { listPostsPendingPublish } from "@/lib/posts/pendingPublish";
 import { createServiceClient } from "@/lib/supabase/service";
+import { DISCONNECT_FAILURE_THRESHOLD } from "@/lib/analytics/constants";
+import { notifyAccountDisconnected } from "@/lib/email/notifyAccountDisconnected";
 
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -45,6 +47,78 @@ async function recordPublishSucceededButStatusFailed(
       `[publish-scheduled] falha ao gravar publish_error/post_url do post ${postId}:`,
       error.message
     );
+  }
+}
+
+async function recordPublishSuccessOnAccount(socialAccountId: string) {
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("social_accounts")
+    .update({
+      consecutive_publish_failures: 0,
+      connection_status: "conectada",
+      disconnected_alert_sent_at: null,
+    })
+    .eq("id", socialAccountId);
+
+  if (error) {
+    console.error(
+      `[publish-scheduled] falha ao resetar contador de falhas da conta ${socialAccountId}:`,
+      error.message
+    );
+  }
+}
+
+async function recordPublishFailureOnAccount(
+  socialAccountId: string,
+  currentFailures: number,
+  currentConnectionStatus: string,
+  accountLabel: string
+) {
+  const supabase = createServiceClient();
+  const nextFailures = currentFailures + 1;
+  const shouldDisconnect =
+    nextFailures >= DISCONNECT_FAILURE_THRESHOLD &&
+    currentConnectionStatus === "conectada";
+
+  const { error } = await supabase
+    .from("social_accounts")
+    .update({
+      consecutive_publish_failures: nextFailures,
+      ...(shouldDisconnect ? { connection_status: "desconectada" } : {}),
+    })
+    .eq("id", socialAccountId);
+
+  if (error) {
+    console.error(
+      `[publish-scheduled] falha ao incrementar contador de falhas da conta ${socialAccountId}:`,
+      error.message
+    );
+    return;
+  }
+
+  if (shouldDisconnect) {
+    const alertError = await notifyAccountDisconnected(accountLabel);
+
+    const { error: alertWriteError } = await supabase
+      .from("social_accounts")
+      .update({
+        disconnected_alert_sent_at: alertError ? null : new Date().toISOString(),
+      })
+      .eq("id", socialAccountId);
+
+    if (alertError) {
+      console.error(
+        `[publish-scheduled] falha ao enviar alerta de desconexao da conta ${socialAccountId}:`,
+        alertError
+      );
+    }
+    if (alertWriteError) {
+      console.error(
+        `[publish-scheduled] falha ao gravar disconnected_alert_sent_at da conta ${socialAccountId}:`,
+        alertWriteError.message
+      );
+    }
   }
 }
 
@@ -122,12 +196,23 @@ export async function GET(request: Request) {
         continue;
       }
       published += 1;
+      if (post.social_account_id) {
+        await recordPublishSuccessOnAccount(post.social_account_id);
+      }
     } catch (err) {
       const message =
         err instanceof PublishError
           ? err.message
           : "Erro inesperado ao publicar via Zernio.";
       await recordPublishError(post.id, message);
+      if (post.social_account_id && post.social_account) {
+        await recordPublishFailureOnAccount(
+          post.social_account_id,
+          post.social_account.consecutive_publish_failures,
+          post.social_account.connection_status,
+          post.social_account.display_name
+        );
+      }
     }
   }
 
