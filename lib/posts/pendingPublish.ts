@@ -20,7 +20,6 @@ export async function listPostsPendingPublish(): Promise<
       "id, caption, rendered_art_url, social_account:social_accounts(zernio_account_id)"
     )
     .eq("status", "aprovado")
-    .eq("media_type", "image")
     .not("rendered_art_url", "is", null)
     .not("caption", "is", null)
     .is("publish_error", null)
