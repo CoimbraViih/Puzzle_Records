@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { listSocialAccounts } from "@/lib/posts/queries";
 import { SOCIAL_NETWORK_LABELS } from "@/lib/types/social-account";
 
-import { deleteSocialAccount, updateZernioAccountId } from "./actions";
+import { deleteSocialAccount, updateZernioAccountId, updateAcervoSlots } from "./actions";
 import { SocialAccountForm } from "./social-account-form";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +23,7 @@ export default async function ContasPage() {
             <th className="py-2">Handle</th>
             <th className="py-2">Nome</th>
             <th className="py-2">ID Zernio</th>
+            <th className="py-2">Horários do acervo</th>
             <th className="py-2" />
           </tr>
         </thead>
@@ -44,6 +45,22 @@ export default async function ContasPage() {
                     defaultValue={account.zernio_account_id ?? ""}
                     placeholder="—"
                     className="w-32 rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground"
+                  />
+                  <Button type="submit" variant="ghost" size="sm">
+                    Salvar
+                  </Button>
+                </form>
+              </td>
+              <td className="py-2">
+                <form
+                  action={updateAcervoSlots.bind(null, account.id)}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    name="acervo_daily_slots"
+                    defaultValue={account.acervo_daily_slots.join(", ")}
+                    placeholder="09:00, 13:00, 19:00"
+                    className="w-40 rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground"
                   />
                   <Button type="submit" variant="ghost" size="sm">
                     Salvar
