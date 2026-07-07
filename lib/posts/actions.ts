@@ -7,6 +7,7 @@ import { notifyApprovers } from "@/lib/email/notifyApprovers";
 import { renderArt, ArtRenderError } from "@/lib/renderer/renderArt";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { mediaTypeFromFile, uploadMedia } from "@/lib/posts/media";
 import type {
   CopyVariation,
   MediaType,
@@ -21,26 +22,6 @@ function revalidatePostPages() {
   revalidatePath("/conteudo");
   revalidatePath("/aprovacao");
   revalidatePath("/admin");
-}
-
-function mediaTypeFromFile(file: File): MediaType {
-  return file.type.startsWith("video/") ? "video" : "image";
-}
-
-async function uploadMedia(file: File): Promise<string> {
-  const supabase = await createClient();
-  const extension = file.name.split(".").pop() ?? "bin";
-  const path = `${crypto.randomUUID()}.${extension}`;
-
-  const { error } = await supabase.storage
-    .from("posts-media")
-    .upload(path, file, { contentType: file.type });
-
-  if (error) {
-    throw new Error("upload_failed");
-  }
-
-  return path;
 }
 
 function readPostFields(formData: FormData) {

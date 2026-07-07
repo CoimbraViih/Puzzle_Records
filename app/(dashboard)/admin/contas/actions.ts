@@ -56,6 +56,28 @@ export async function updateZernioAccountId(
   revalidatePath("/admin/contas");
 }
 
+export async function updateAcervoSlots(
+  accountId: string,
+  formData: FormData
+) {
+  const raw = String(formData.get("acervo_daily_slots") ?? "");
+  const slots = raw
+    .split(",")
+    .map((slot) => slot.trim())
+    .filter((slot) => /^\d{2}:\d{2}$/.test(slot));
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("social_accounts")
+    .update({ acervo_daily_slots: slots })
+    .eq("id", accountId);
+
+  if (error) {
+    console.error("Falha ao atualizar acervo_daily_slots:", accountId, error);
+  }
+  revalidatePath("/admin/contas");
+}
+
 export async function deleteSocialAccount(
   accountId: string,
   _formData: FormData

@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   CheckSquare,
   Disc3,
+  Library,
   LayoutDashboard,
   LayoutGrid,
   Share2,
@@ -41,6 +42,12 @@ const NAV_GROUPS: NavGroup[] = [
         title: "Fila de posts",
         url: "/conteudo",
         icon: LayoutGrid,
+        roles: ["admin", "aprovador", "equipe_conteudo"],
+      },
+      {
+        title: "Acervo",
+        url: "/acervo",
+        icon: Library,
         roles: ["admin", "aprovador", "equipe_conteudo"],
       },
       {

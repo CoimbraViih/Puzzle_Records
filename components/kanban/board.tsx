@@ -34,6 +34,13 @@ export function KanbanBoard({
           </h2>
           <div className="flex flex-col gap-3">
             {posts
+              .filter(
+                (post) =>
+                  !(
+                    post.content_source === "acervo" &&
+                    (post.status === "aprovado" || post.status === "publicado")
+                  )
+              )
               .filter((post) => post.status === status)
               .map((post) => (
                 <PostCard

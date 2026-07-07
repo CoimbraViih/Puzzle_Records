@@ -114,7 +114,7 @@ export function PostCard({
         />
       )}
 
-      {post.rendered_art_signed_url && (
+      {post.rendered_art_signed_url && post.content_source !== "acervo" && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={post.rendered_art_signed_url}
@@ -123,9 +123,11 @@ export function PostCard({
         />
       )}
 
-      <p className="text-sm font-semibold text-foreground">
-        {post.headline ?? "Aguardando manchete da IA (M4)"}
-      </p>
+      {(post.headline || post.content_source !== "acervo") && (
+        <p className="text-sm font-semibold text-foreground">
+          {post.headline ?? "Aguardando manchete da IA (M4)"}
+        </p>
+      )}
       <p className="line-clamp-3 text-xs text-muted-foreground">
         {post.caption ?? "Aguardando legenda da IA (M4)"}
       </p>

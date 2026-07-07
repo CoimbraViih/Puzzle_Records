@@ -18,6 +18,9 @@ export const POST_STATUS_LABELS: Record<PostStatus, string> = {
   publicado: "Publicado",
 };
 
+export const CONTENT_SOURCES = ["drive", "acervo"] as const;
+export type ContentSource = (typeof CONTENT_SOURCES)[number];
+
 export const POST_TEMPLATES = ["A", "B"] as const;
 export type PostTemplate = (typeof POST_TEMPLATES)[number];
 
@@ -76,6 +79,8 @@ export interface Post {
   publish_error: string | null;
   created_by: string | null;
   approved_by: string | null;
+  /** Preenchido pelo M8: distingue posts do Drive (M3) de upload manual de acervo. */
+  content_source: ContentSource;
   created_at: string;
   updated_at: string;
 }

@@ -21,7 +21,9 @@ const IG_PLACEHOLDER_AVATAR =
  */
 export function InstagramPreview({ post }: { post: PostWithRelations }) {
   const isInstagram = post.social_account?.network === "instagram";
-  const imageUrl = post.rendered_art_signed_url ?? post.media_signed_url ?? null;
+  const previewUrl = post.rendered_art_signed_url ?? post.media_signed_url ?? null;
+  const isPreviewVideo =
+    post.content_source === "acervo" && post.media_type === "video";
 
   if (!isInstagram) {
     return (
@@ -29,12 +31,15 @@ export function InstagramPreview({ post }: { post: PostWithRelations }) {
         Preview fiel para {post.social_account?.network ?? "essa rede"} ainda
         não implementado (M6 cobre só Instagram — ver `docs/CLAUDE.md`).
         Abaixo, a arte e a legenda como serão publicadas:
-        {imageUrl && (
+        {previewUrl && isPreviewVideo && (
+          <video src={previewUrl} controls className="mt-2 w-full rounded" />
+        )}
+        {previewUrl && !isPreviewVideo && (
           // URL assinada temporária do Storage — não faz sentido no
           // otimizador de imagem do Next (expira e muda a cada carregamento).
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={imageUrl}
+            src={previewUrl}
             alt={post.headline ?? ""}
             className="mt-2 w-full rounded"
           />
@@ -58,12 +63,19 @@ export function InstagramPreview({ post }: { post: PostWithRelations }) {
         </span>
       </div>
 
-      {imageUrl && (
+      {previewUrl && isPreviewVideo && (
+        <video
+          src={previewUrl}
+          controls
+          className="aspect-square w-full object-cover"
+        />
+      )}
+      {previewUrl && !isPreviewVideo && (
         // URL assinada temporária do Storage — não faz sentido no
         // otimizador de imagem do Next (expira e muda a cada carregamento).
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={imageUrl}
+          src={previewUrl}
           alt={post.headline ?? ""}
           className="aspect-square w-full object-cover"
         />
