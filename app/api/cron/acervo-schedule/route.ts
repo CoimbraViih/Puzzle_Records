@@ -110,6 +110,7 @@ export async function GET(request: Request) {
           .from("posts")
           .update({ scheduled_at: target.toISOString() })
           .eq("id", chosen.id)
+          .eq("status", "aprovado")
           .is("scheduled_at", null)
           .select("id");
 
