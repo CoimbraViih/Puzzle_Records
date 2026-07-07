@@ -1,5 +1,5 @@
-import { createServiceClient } from "@/lib/supabase/service";
 import { getResendClient, EMAIL_FROM } from "./client";
+import { getApproverAndAdminEmails } from "./recipients";
 import {
   newPostSubject,
   newPostBody,
@@ -14,12 +14,12 @@ type NotifyParams = {
 };
 
 /**
- * Notifica todos os usuários `aprovador`/`admin` por e-mail. Usa o cliente
- * de service-role (`createServiceClient`) porque a policy
- * `profiles_select_own_or_admin` (`supabase/migrations/0001_profiles.sql:28-30`)
- * bloqueia um usuário `equipe_conteudo` de listar e-mails de outros
- * perfis — esta é uma notificação de sistema, não uma leitura em nome do
- * usuário logado.
+ * Notifica todos os usuários `aprovador`/`admin` por e-mail. Busca os
+ * destinatários via `getApproverAndAdminEmails` (cliente service-role),
+ * porque a policy `profiles_select_own_or_admin`
+ * (`supabase/migrations/0001_profiles.sql:28-30`) bloqueia um usuário
+ * `equipe_conteudo` de listar e-mails de outros perfis — esta é uma
+ * notificação de sistema, não uma leitura em nome do usuário logado.
  *
  * Nunca lança: qualquer falha (env var ausente, erro de banco, lista de
  * destinatários vazia, erro do Resend) vira uma string de erro retornada
@@ -37,17 +37,9 @@ export async function notifyApprovers({
       return "RESEND_API_KEY não configurada — notificação não enviada.";
     }
 
-    const supabase = createServiceClient();
-    const { data: recipients, error } = await supabase
-      .from("profiles")
-      .select("email")
-      .in("role", ["aprovador", "admin"]);
-
-    if (error) {
-      return `Falha ao buscar destinatários da notificação: ${error.message}`;
-    }
-    if (!recipients || recipients.length === 0) {
-      return "Nenhum aprovador/admin cadastrado para notificar.";
+    const recipients = await getApproverAndAdminEmails();
+    if ("error" in recipients) {
+      return recipients.error;
     }
 
     const subject =
@@ -61,7 +53,7 @@ export async function notifyApprovers({
 
     const { error: sendError } = await resend.emails.send({
       from: EMAIL_FROM,
-      to: recipients.map((r) => r.email),
+      to: recipients.emails,
       subject,
       html,
     });
