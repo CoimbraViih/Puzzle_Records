@@ -69,6 +69,15 @@ async function recordPublishSuccessOnAccount(socialAccountId: string) {
   }
 }
 
+// Débito técnico conhecido: consecutive_publish_failures usa um snapshot lido
+// no início da execução do cron (listPostsPendingPublish). Se 3+ posts da
+// mesma conta falharem na mesma execução, cada chamada incrementa a partir do
+// mesmo currentFailures em memória em vez do valor mais recente gravado por
+// uma chamada anterior nesta mesma execução — o contador final pode subcontar
+// entre posts da mesma conta lidos na mesma leitura. A transição para
+// 'desconectada' abaixo é protegida contra duplicação (ver comentário
+// interno), mas o valor exato do contador nesse cenário raro pode ficar
+// ligeiramente atrasado até a próxima execução do cron corrigir.
 async function recordPublishFailureOnAccount(
   socialAccountId: string,
   currentFailures: number,
@@ -77,48 +86,73 @@ async function recordPublishFailureOnAccount(
 ) {
   const supabase = createServiceClient();
   const nextFailures = currentFailures + 1;
-  const shouldDisconnect =
+  const shouldAttemptDisconnect =
     nextFailures >= DISCONNECT_FAILURE_THRESHOLD &&
     currentConnectionStatus === "conectada";
 
-  const { error } = await supabase
+  if (!shouldAttemptDisconnect) {
+    const { error } = await supabase
+      .from("social_accounts")
+      .update({ consecutive_publish_failures: nextFailures })
+      .eq("id", socialAccountId);
+
+    if (error) {
+      console.error(
+        `[publish-scheduled] falha ao incrementar contador de falhas da conta ${socialAccountId}:`,
+        error.message
+      );
+    }
+    return;
+  }
+
+  // Só transiciona para desconectada se a conta ainda estiver 'conectada' no
+  // banco no momento desta escrita — evita que 2 posts da mesma conta,
+  // falhando na mesma execução do cron com o mesmo snapshot em memória,
+  // disparem o alerta duas vezes ou pisem no contador um do outro.
+  const { data: claimed, error: claimError } = await supabase
     .from("social_accounts")
     .update({
       consecutive_publish_failures: nextFailures,
-      ...(shouldDisconnect ? { connection_status: "desconectada" } : {}),
+      connection_status: "desconectada",
     })
-    .eq("id", socialAccountId);
+    .eq("id", socialAccountId)
+    .eq("connection_status", "conectada")
+    .select("id");
 
-  if (error) {
+  if (claimError) {
     console.error(
-      `[publish-scheduled] falha ao incrementar contador de falhas da conta ${socialAccountId}:`,
-      error.message
+      `[publish-scheduled] falha ao marcar conta ${socialAccountId} como desconectada:`,
+      claimError.message
     );
     return;
   }
 
-  if (shouldDisconnect) {
-    const alertError = await notifyAccountDisconnected(accountLabel);
+  if (!claimed || claimed.length === 0) {
+    // Outro post da mesma conta, na mesma execução, já reivindicou a
+    // transição para desconectada — não duplica o alerta.
+    return;
+  }
 
-    const { error: alertWriteError } = await supabase
-      .from("social_accounts")
-      .update({
-        disconnected_alert_sent_at: alertError ? null : new Date().toISOString(),
-      })
-      .eq("id", socialAccountId);
+  const alertError = await notifyAccountDisconnected(accountLabel);
 
-    if (alertError) {
-      console.error(
-        `[publish-scheduled] falha ao enviar alerta de desconexao da conta ${socialAccountId}:`,
-        alertError
-      );
-    }
-    if (alertWriteError) {
-      console.error(
-        `[publish-scheduled] falha ao gravar disconnected_alert_sent_at da conta ${socialAccountId}:`,
-        alertWriteError.message
-      );
-    }
+  const { error: alertWriteError } = await supabase
+    .from("social_accounts")
+    .update({
+      disconnected_alert_sent_at: alertError ? null : new Date().toISOString(),
+    })
+    .eq("id", socialAccountId);
+
+  if (alertError) {
+    console.error(
+      `[publish-scheduled] falha ao enviar alerta de desconexao da conta ${socialAccountId}:`,
+      alertError
+    );
+  }
+  if (alertWriteError) {
+    console.error(
+      `[publish-scheduled] falha ao gravar disconnected_alert_sent_at da conta ${socialAccountId}:`,
+      alertWriteError.message
+    );
   }
 }
 
