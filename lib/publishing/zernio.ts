@@ -92,6 +92,12 @@ export class ZernioProvider implements PublishingProvider {
       throw new PublishError("Resposta do Zernio sem dados de métricas.");
     }
 
+    if (data.likes == null && data.comments == null && data.reach == null) {
+      throw new PublishError(
+        "Resposta do Zernio sem nenhuma métrica preenchida (likes/comments/reach todos ausentes)."
+      );
+    }
+
     return {
       likes: data.likes ?? null,
       comments: data.comments ?? null,

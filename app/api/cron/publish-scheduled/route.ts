@@ -4,7 +4,6 @@ import { listPostsPendingPublish } from "@/lib/posts/pendingPublish";
 import { createServiceClient } from "@/lib/supabase/service";
 import { DISCONNECT_FAILURE_THRESHOLD } from "@/lib/analytics/constants";
 import { notifyAccountDisconnected } from "@/lib/email/notifyAccountDisconnected";
-import type { ConnectionStatus } from "@/lib/types/social-account";
 
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -70,28 +69,30 @@ async function recordPublishSuccessOnAccount(socialAccountId: string) {
   }
 }
 
-// Débito técnico conhecido: consecutive_publish_failures usa um snapshot lido
-// no início da execução do cron (listPostsPendingPublish). Se 3+ posts da
-// mesma conta falharem na mesma execução, cada chamada incrementa a partir do
-// mesmo currentFailures em memória em vez do valor mais recente gravado por
-// uma chamada anterior nesta mesma execução — o contador final pode subcontar
-// entre posts da mesma conta lidos na mesma leitura. A transição para
-// 'desconectada' abaixo é protegida contra duplicação (ver comentário
-// interno), mas o valor exato do contador nesse cenário raro pode ficar
-// ligeiramente atrasado até a próxima execução do cron corrigir.
 async function recordPublishFailureOnAccount(
   socialAccountId: string,
-  currentFailures: number,
-  currentConnectionStatus: ConnectionStatus,
   accountLabel: string
 ) {
   const supabase = createServiceClient();
-  const nextFailures = currentFailures + 1;
-  const shouldAttemptDisconnect =
-    nextFailures >= DISCONNECT_FAILURE_THRESHOLD &&
-    currentConnectionStatus === "conectada";
 
-  if (!shouldAttemptDisconnect) {
+  const { data: account, error: fetchError } = await supabase
+    .from("social_accounts")
+    .select("consecutive_publish_failures, connection_status, disconnected_alert_sent_at")
+    .eq("id", socialAccountId)
+    .single();
+
+  if (fetchError || !account) {
+    console.error(
+      `[publish-scheduled] falha ao ler estado da conta ${socialAccountId} antes de registrar falha:`,
+      fetchError?.message
+    );
+    return;
+  }
+
+  const nextFailures = account.consecutive_publish_failures + 1;
+  const crossedThreshold = nextFailures >= DISCONNECT_FAILURE_THRESHOLD;
+
+  if (!crossedThreshold) {
     const { error } = await supabase
       .from("social_accounts")
       .update({ consecutive_publish_failures: nextFailures })
@@ -106,19 +107,58 @@ async function recordPublishFailureOnAccount(
     return;
   }
 
-  // Só transiciona para desconectada se a conta ainda estiver 'conectada' no
-  // banco no momento desta escrita — evita que 2 posts da mesma conta,
-  // falhando na mesma execução do cron com o mesmo snapshot em memória,
-  // disparem o alerta duas vezes ou pisem no contador um do outro.
-  const { data: claimed, error: claimError } = await supabase
+  const isFirstDisconnect = account.connection_status === "conectada";
+  const isAlertRetry =
+    account.connection_status === "desconectada" &&
+    account.disconnected_alert_sent_at === null;
+
+  if (!isFirstDisconnect && !isAlertRetry) {
+    // Já desconectada e o alerta já foi confirmado enviado — só atualiza o
+    // contador, sem reenviar.
+    const { error } = await supabase
+      .from("social_accounts")
+      .update({ consecutive_publish_failures: nextFailures })
+      .eq("id", socialAccountId);
+
+    if (error) {
+      console.error(
+        `[publish-scheduled] falha ao incrementar contador de falhas da conta ${socialAccountId}:`,
+        error.message
+      );
+    }
+    return;
+  }
+
+  // Claim condicional: cobre tanto a primeira transição para desconectada
+  // quanto o reenvio de um alerta que falhou antes — reconfirma exatamente o
+  // estado lido acima para não duplicar o alerta se outra execução do cron
+  // já agiu nesse meio-tempo.
+  const claimUpdate: Record<string, unknown> = {
+    consecutive_publish_failures: nextFailures,
+    // Sentinela: reivindica a tentativa de alerta (primeira desconexão ou
+    // reenvio) antes de chamar notifyAccountDisconnected, para que uma
+    // execução concorrente do cron não veja mais disconnected_alert_sent_at
+    // IS NULL nesse meio-tempo e não duplique o e-mail. Se o envio falhar, é
+    // resetado para null abaixo para permitir nova tentativa no próximo ciclo.
+    disconnected_alert_sent_at: new Date().toISOString(),
+  };
+  if (isFirstDisconnect) {
+    claimUpdate.connection_status = "desconectada";
+  }
+
+  let claimQuery = supabase
     .from("social_accounts")
-    .update({
-      consecutive_publish_failures: nextFailures,
-      connection_status: "desconectada",
-    })
+    .update(claimUpdate)
     .eq("id", socialAccountId)
-    .eq("connection_status", "conectada")
-    .select("id");
+    .eq("connection_status", account.connection_status);
+
+  // Ambos os caminhos (primeira desconexão e retry) exigem que ninguém mais
+  // tenha reivindicado o envio do alerta ainda — no caso de primeira
+  // desconexão, account.disconnected_alert_sent_at já é null (não há alerta
+  // anterior); no caso de retry, é a própria condição que define isAlertRetry.
+  claimQuery = claimQuery.is("disconnected_alert_sent_at", null);
+
+  const { data: claimed, error: claimError } = await claimQuery.select("id");
 
   if (claimError) {
     console.error(
@@ -129,8 +169,8 @@ async function recordPublishFailureOnAccount(
   }
 
   if (!claimed || claimed.length === 0) {
-    // Outro post da mesma conta, na mesma execução, já reivindicou a
-    // transição para desconectada — não duplica o alerta.
+    // Outra execução do cron já reivindicou essa transição/reenvio — não
+    // duplica o alerta.
     return;
   }
 
@@ -227,6 +267,9 @@ export async function GET(request: Request) {
           `[publish-scheduled] falha ao gravar publicacao do post ${post.id}:`,
           error.message
         );
+        if (post.social_account_id) {
+          await recordPublishSuccessOnAccount(post.social_account_id);
+        }
         await recordPublishSucceededButStatusFailed(post.id, postUrl);
         continue;
       }
@@ -243,8 +286,6 @@ export async function GET(request: Request) {
       if (post.social_account_id && post.social_account) {
         await recordPublishFailureOnAccount(
           post.social_account_id,
-          post.social_account.consecutive_publish_failures,
-          post.social_account.connection_status,
           post.social_account.display_name
         );
       }

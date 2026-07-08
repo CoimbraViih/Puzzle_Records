@@ -71,8 +71,8 @@ export default async function DashboardPage() {
           </span>
           <span className="text-xs text-muted-foreground">
             {socialAccounts.length === 1
-              ? "Conta social conectada"
-              : "Contas sociais conectadas"}
+              ? "Conta social cadastrada"
+              : "Contas sociais cadastradas"}
           </span>
         </div>
       </div>
