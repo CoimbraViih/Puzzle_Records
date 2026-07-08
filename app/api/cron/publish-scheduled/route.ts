@@ -135,17 +135,15 @@ async function recordPublishFailureOnAccount(
   // já agiu nesse meio-tempo.
   const claimUpdate: Record<string, unknown> = {
     consecutive_publish_failures: nextFailures,
+    // Sentinela: reivindica a tentativa de alerta (primeira desconexão ou
+    // reenvio) antes de chamar notifyAccountDisconnected, para que uma
+    // execução concorrente do cron não veja mais disconnected_alert_sent_at
+    // IS NULL nesse meio-tempo e não duplique o e-mail. Se o envio falhar, é
+    // resetado para null abaixo para permitir nova tentativa no próximo ciclo.
+    disconnected_alert_sent_at: new Date().toISOString(),
   };
   if (isFirstDisconnect) {
     claimUpdate.connection_status = "desconectada";
-  }
-  if (isAlertRetry) {
-    // Sentinela: reivindica a tentativa de reenvio antes de chamar
-    // notifyAccountDisconnected, para que uma segunda execução do cron
-    // concorrente não veja mais disconnected_alert_sent_at IS NULL e não
-    // duplique o e-mail. Se o envio falhar, é resetado para null abaixo
-    // para permitir nova tentativa no próximo ciclo.
-    claimUpdate.disconnected_alert_sent_at = new Date().toISOString();
   }
 
   let claimQuery = supabase
@@ -154,9 +152,11 @@ async function recordPublishFailureOnAccount(
     .eq("id", socialAccountId)
     .eq("connection_status", account.connection_status);
 
-  if (isAlertRetry) {
-    claimQuery = claimQuery.is("disconnected_alert_sent_at", null);
-  }
+  // Ambos os caminhos (primeira desconexão e retry) exigem que ninguém mais
+  // tenha reivindicado o envio do alerta ainda — no caso de primeira
+  // desconexão, account.disconnected_alert_sent_at já é null (não há alerta
+  // anterior); no caso de retry, é a própria condição que define isAlertRetry.
+  claimQuery = claimQuery.is("disconnected_alert_sent_at", null);
 
   const { data: claimed, error: claimError } = await claimQuery.select("id");
 
