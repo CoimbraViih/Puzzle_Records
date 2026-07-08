@@ -16,6 +16,16 @@ export interface AnalyticsSummary {
   byHour: AggregatedRow[];
 }
 
+function hourInSaoPaulo(isoTimestamp: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(isoTimestamp));
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "00";
+  return hour === "24" ? "00" : hour.padStart(2, "0");
+}
+
 function accumulate(map: Map<string, AggregatedRow>, key: string, label: string, metrics: {
   likes: number | null;
   comments: number | null;
@@ -81,8 +91,7 @@ export async function listAnalyticsSummary(): Promise<AnalyticsSummary> {
 
     const timestamp = row.post.scheduled_at ?? row.post.published_at;
     if (timestamp) {
-      const hour = new Date(timestamp).getHours();
-      const key = String(hour).padStart(2, "0");
+      const key = hourInSaoPaulo(timestamp);
       accumulate(byHour, key, `${key}h`, metrics);
     }
   }

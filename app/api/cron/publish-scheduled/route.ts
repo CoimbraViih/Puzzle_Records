@@ -4,6 +4,7 @@ import { listPostsPendingPublish } from "@/lib/posts/pendingPublish";
 import { createServiceClient } from "@/lib/supabase/service";
 import { DISCONNECT_FAILURE_THRESHOLD } from "@/lib/analytics/constants";
 import { notifyAccountDisconnected } from "@/lib/email/notifyAccountDisconnected";
+import type { ConnectionStatus } from "@/lib/types/social-account";
 
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -81,7 +82,7 @@ async function recordPublishSuccessOnAccount(socialAccountId: string) {
 async function recordPublishFailureOnAccount(
   socialAccountId: string,
   currentFailures: number,
-  currentConnectionStatus: string,
+  currentConnectionStatus: ConnectionStatus,
   accountLabel: string
 ) {
   const supabase = createServiceClient();

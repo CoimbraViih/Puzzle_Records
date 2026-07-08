@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import type { ConnectionStatus } from "@/lib/types/social-account";
 
 export interface PostPendingPublish {
   id: string;
@@ -9,7 +10,7 @@ export interface PostPendingPublish {
     zernio_account_id: string | null;
     display_name: string;
     consecutive_publish_failures: number;
-    connection_status: string;
+    connection_status: ConnectionStatus;
   } | null;
 }
 

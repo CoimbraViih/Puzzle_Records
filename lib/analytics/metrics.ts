@@ -40,14 +40,17 @@ export async function upsertPostMetrics(
   metrics: { likes: number | null; comments: number | null; reach: number | null }
 ) {
   const supabase = createServiceClient();
-  const { error } = await supabase.from("post_metrics").upsert({
-    post_id: postId,
-    likes: metrics.likes,
-    comments: metrics.comments,
-    reach: metrics.reach,
-    collected_at: new Date().toISOString(),
-    metrics_error: null,
-  });
+  const { error } = await supabase.from("post_metrics").upsert(
+    {
+      post_id: postId,
+      likes: metrics.likes,
+      comments: metrics.comments,
+      reach: metrics.reach,
+      collected_at: new Date().toISOString(),
+      metrics_error: null,
+    },
+    { onConflict: "post_id" }
+  );
 
   if (error) {
     console.error(
