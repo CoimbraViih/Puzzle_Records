@@ -1,7 +1,9 @@
 import Link from "next/link";
 
+import { AnalyticsSummarySection } from "@/components/dashboard/analytics-summary";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
+import { listAnalyticsSummary } from "@/lib/analytics/queries";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { listArtists, listPosts, listSocialAccounts } from "@/lib/posts/queries";
 import { POST_STATUSES, POST_STATUS_LABELS } from "@/lib/types/post";
@@ -11,11 +13,16 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const profile = await getCurrentProfile();
-  const [posts, artists, socialAccounts] = await Promise.all([
+  const [posts, artists, socialAccounts, analyticsSummary] = await Promise.all([
     listPosts(),
     listArtists(),
     listSocialAccounts(),
+    listAnalyticsSummary(),
   ]);
+
+  const disconnectedAccounts = socialAccounts.filter(
+    (account) => account.connection_status === "desconectada"
+  );
 
   const countsByStatus = Object.fromEntries(
     POST_STATUSES.map((status) => [
@@ -69,6 +76,16 @@ export default async function DashboardPage() {
           </span>
         </div>
       </div>
+
+      {disconnectedAccounts.length > 0 && (
+        <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          {disconnectedAccounts.length === 1
+            ? `A conta ${disconnectedAccounts[0].display_name} parece estar desconectada — verifique em /admin/contas.`
+            : `${disconnectedAccounts.length} contas parecem estar desconectadas — verifique em /admin/contas.`}
+        </div>
+      )}
+
+      <AnalyticsSummarySection summary={analyticsSummary} />
 
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
         <h2 className="text-sm font-semibold text-card-foreground">

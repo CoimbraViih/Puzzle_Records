@@ -5,5 +5,10 @@ export function getPublishingProvider(): PublishingProvider {
   return new ZernioProvider();
 }
 
-export type { PublishInput, PublishResult, PublishingProvider } from "./types";
+export type {
+  PublishInput,
+  PublishResult,
+  PublishingProvider,
+  PostMetrics,
+} from "./types";
 export { PublishError } from "./types";
