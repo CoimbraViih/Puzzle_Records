@@ -139,6 +139,14 @@ async function recordPublishFailureOnAccount(
   if (isFirstDisconnect) {
     claimUpdate.connection_status = "desconectada";
   }
+  if (isAlertRetry) {
+    // Sentinela: reivindica a tentativa de reenvio antes de chamar
+    // notifyAccountDisconnected, para que uma segunda execução do cron
+    // concorrente não veja mais disconnected_alert_sent_at IS NULL e não
+    // duplique o e-mail. Se o envio falhar, é resetado para null abaixo
+    // para permitir nova tentativa no próximo ciclo.
+    claimUpdate.disconnected_alert_sent_at = new Date().toISOString();
+  }
 
   let claimQuery = supabase
     .from("social_accounts")
