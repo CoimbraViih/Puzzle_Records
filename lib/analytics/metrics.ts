@@ -43,9 +43,9 @@ export async function upsertPostMetrics(
   const { error } = await supabase.from("post_metrics").upsert(
     {
       post_id: postId,
-      likes: metrics.likes,
-      comments: metrics.comments,
-      reach: metrics.reach,
+      ...(metrics.likes !== null ? { likes: metrics.likes } : {}),
+      ...(metrics.comments !== null ? { comments: metrics.comments } : {}),
+      ...(metrics.reach !== null ? { reach: metrics.reach } : {}),
       collected_at: new Date().toISOString(),
       metrics_error: null,
     },
