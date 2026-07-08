@@ -40,8 +40,7 @@ export async function listAnalyticsSummary(): Promise<AnalyticsSummary> {
     .select(
       "likes, comments, reach, post:posts(scheduled_at, published_at, social_account:social_accounts(display_name), artist:artists(name))"
     )
-    .gte("collected_at", cutoff)
-    .not("collected_at", "is", null);
+    .gte("collected_at", cutoff);
 
   if (error) {
     console.error("[analytics] falha ao buscar resumo de métricas:", error.message);
@@ -64,6 +63,7 @@ export async function listAnalyticsSummary(): Promise<AnalyticsSummary> {
     } | null;
   }[]) {
     if (!row.post) continue;
+    if (row.likes === null && row.comments === null && row.reach === null) continue;
     const metrics = { likes: row.likes, comments: row.comments, reach: row.reach };
 
     if (row.post.social_account) {
