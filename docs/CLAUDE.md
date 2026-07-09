@@ -20,7 +20,9 @@ Repositório remoto: https://github.com/CoimbraViih/Puzzle_Records (branch `main
 
 ## Stack
 
-Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, Supabase (Postgres + Auth + Storage), Vercel + Vercel Cron, OpenAI API, API do Zernio (publicação multi-rede), Google Drive API (ingestão), Puppeteer ou Satori (render de artes HTML → imagem).
+Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, Supabase (Postgres + Auth + Storage), Vercel + Vercel Cron, OpenAI API (OpenRouter como alternativa gratuita só para teste, ver abaixo), API do Zernio (publicação multi-rede), Google Drive API (ingestão), Puppeteer ou Satori (render de artes HTML → imagem).
+
+**OpenRouter para teste** (`lib/openai/client.ts`): mesmo SDK `openai`, só troca `baseURL`/`apiKey` — se `OPENAI_API_KEY` estiver vazia e `OPENROUTER_API_KEY` preenchida, o sistema usa OpenRouter automaticamente com modelos gratuitos (sufixo `:free`), sem mudar código. `AI_PROVIDER=openai`/`openrouter` força um dos dois. Só para testar o pipeline de geração de copy sem custo — a Puzzle Records segue com GPT-4o-mini/GPT-4o em produção (decisão de modelo por contexto, abaixo).
 
 Sem serviço de e-mail no momento (Resend foi removido em 09/07/2026 — ver decisão abaixo) — alertas de SLA/desconexão/relatório semanal ficam pendentes de um novo canal, a decidir no M11 (`PLAN.md`).
 

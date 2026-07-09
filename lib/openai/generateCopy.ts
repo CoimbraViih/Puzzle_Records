@@ -1,14 +1,25 @@
-import { createOpenAIClient } from "./client";
+import { createOpenAIClient, getAiProvider } from "./client";
 import { buildUserPrompt, SYSTEM_PROMPT } from "./prompts";
 import type { CopyVariation, PostType } from "@/lib/types/post";
 
-const ROUTINE_MODEL = "gpt-4o-mini";
-const LAUNCH_MODEL = "gpt-4o";
+const OPENAI_ROUTINE_MODEL = "gpt-4o-mini";
+const OPENAI_LAUNCH_MODEL = "gpt-4o";
+
+// Modelos gratuitos do OpenRouter (só para teste, ver lib/openai/client.ts).
+// Overridáveis por env var caso o modelo padrão saia do catálogo grátis.
+const OPENROUTER_ROUTINE_MODEL =
+  process.env.OPENROUTER_MODEL_ROUTINE ?? "meta-llama/llama-3.3-70b-instruct:free";
+const OPENROUTER_LAUNCH_MODEL =
+  process.env.OPENROUTER_MODEL_LAUNCH ?? OPENROUTER_ROUTINE_MODEL;
 
 export class CopyGenerationError extends Error {}
 
 function modelForPostType(postType: PostType): string {
-  return postType === "lancamento" ? LAUNCH_MODEL : ROUTINE_MODEL;
+  const isLaunch = postType === "lancamento";
+  if (getAiProvider() === "openrouter") {
+    return isLaunch ? OPENROUTER_LAUNCH_MODEL : OPENROUTER_ROUTINE_MODEL;
+  }
+  return isLaunch ? OPENAI_LAUNCH_MODEL : OPENAI_ROUTINE_MODEL;
 }
 
 function parseVariations(raw: string): CopyVariation[] {
@@ -51,10 +62,17 @@ export async function generateCopyVariations(input: {
 }): Promise<CopyVariation[]> {
   const client = createOpenAIClient();
   const model = modelForPostType(input.postType);
+  // Nem todo modelo gratuito do OpenRouter suporta JSON mode — o
+  // SYSTEM_PROMPT já exige JSON explicitamente, então response_format fica
+  // só como reforço extra quando o provedor é a OpenAI de verdade.
+  const responseFormat =
+    getAiProvider() === "openai"
+      ? ({ response_format: { type: "json_object" as const } } as const)
+      : {};
 
   const completion = await client.chat.completions.create({
     model,
-    response_format: { type: "json_object" },
+    ...responseFormat,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: buildUserPrompt(input) },

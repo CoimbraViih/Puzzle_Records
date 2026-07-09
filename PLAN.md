@@ -209,7 +209,7 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 - [ ] Criar projeto Supabase real, aplicar as migrations `0001`–`0010` em ordem, criar o primeiro usuário admin.
 - [ ] Deploy na Vercel (`docs/DEPLOY.md`) + configurar as env vars restantes + registrar os crons (`vercel.json` já reflete a remoção do Resend).
-- [ ] Chave `OPENAI_API_KEY` real; Service Account do Google Drive + pasta compartilhada com o e-mail `client_email` (papel Editor).
+- [ ] Chave `OPENAI_API_KEY` real; Service Account do Google Drive + pasta compartilhada com o e-mail `client_email` (papel Editor). Para testar a geração de copy sem custo antes de comprar crédito OpenAI, dá pra usar `OPENROUTER_API_KEY` (modelos gratuitos, ver `.env.example` e `docs/CLAUDE.md`) — troca automática, sem mexer em código.
 - [ ] Rodar em ordem os checklists manuais acumulados de M1 a M10 (ficam em `docs/plans/`) — é a validação de que o código escrito de fato funciona contra infraestrutura real.
 - [ ] Decidir o canal de notificação que substitui o Resend (recolocar Resend, ou outro canal — ex.: centro de notificações in-app, Slack/webhook) e implementá-lo. Sem isso, alertas de SLA/desconexão e relatório semanal continuam sem sair.
 
