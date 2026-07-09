@@ -9,7 +9,7 @@ import { PublishError } from "./types";
 // Base URL confirmada em docs.zernio.com (auditoria do M12) — antes era um
 // valor "assumido" sem doc real disponível (débito técnico do M7).
 // Overridável por env var só por precaução (staging/sandbox do Zernio).
-const ZERNIO_BASE_URL = process.env.ZERNIO_API_BASE_URL ?? "https://zernio.com/api/v1";
+const ZERNIO_BASE_URL = process.env.ZERNIO_API_BASE_URL || "https://zernio.com/api/v1";
 
 interface ZernioErrorBody {
   error?: string;
@@ -19,6 +19,13 @@ interface ZernioErrorBody {
 
 function authHeaders(apiKey: string, extra?: Record<string, string>) {
   return { Authorization: `Bearer ${apiKey}`, ...extra };
+}
+
+/** Extrai uma mensagem legível de qualquer valor lançado por fetch (TypeError
+ * de rede, DNS, etc.) — nunca descarta o erro real num "falha de rede"
+ * genérico, senão fica impossível diagnosticar o que realmente houve. */
+function describeThrown(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 /** Envelope de erro documentado em docs.zernio.com: {error, type, code, ...}. */
@@ -36,6 +43,34 @@ function requireApiKey(): string {
     throw new PublishError("ZERNIO_API_KEY não configurada.");
   }
   return apiKey;
+}
+
+interface ZernioPlatformState {
+  platform: string;
+  status?: string;
+  platformPostUrl?: string;
+  error?: string;
+}
+
+interface ZernioPostState {
+  _id: string;
+  status?: string;
+  platforms?: ZernioPlatformState[];
+}
+
+// Publicação no Zernio é assíncrona MESMO para Instagram — não só para o
+// TikTok como a doc pública (docs.zernio.com) sugere. A resposta síncrona de
+// POST /posts vem com platforms[].status "processing" e sem
+// platformPostUrl; confirmado testando manualmente contra a API real em
+// 09/07/2026 (ver PLAN.md M12) — o post só aparece como "published", com
+// platformPostUrl preenchido, minutos depois, consultável via
+// GET /posts/{id}. Sem suporte a webhooks ainda, então este adapter faz
+// polling limitado dentro da própria chamada de publish().
+const PUBLISH_POLL_INTERVAL_MS = 3000;
+const PUBLISH_POLL_MAX_ATTEMPTS = 10; // ~30s de espera total
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export class ZernioProvider implements PublishingProvider {
@@ -62,53 +97,87 @@ export class ZernioProvider implements PublishingProvider {
           mediaItems: [{ url: mediaPublicUrl, type: input.mediaType }],
         }),
       });
-    } catch {
-      throw new PublishError("Falha de rede ao chamar a API do Zernio (POST /posts).");
+    } catch (err) {
+      throw new PublishError(
+        `Falha de rede ao chamar a API do Zernio (POST /posts): ${describeThrown(err)}`
+      );
     }
 
     if (!response.ok) {
       throw new PublishError(await zernioErrorMessage(response));
     }
 
-    const data = (await response.json().catch(() => null)) as {
-      id?: string;
-      platforms?: {
-        platform: string;
-        status?: string;
-        publishedUrl?: string;
-        error?: string;
-      }[];
+    // Formato real da resposta (diferente do documentado publicamente):
+    // {post: {_id, status, platforms: [...]}, message}, não {id, platforms}.
+    const created = (await response.json().catch(() => null)) as {
+      post?: ZernioPostState;
     } | null;
 
-    if (!data?.id) {
-      throw new PublishError("Resposta do Zernio sem `id` do post (POST /posts).");
+    const zernioPostId = created?.post?._id;
+    if (!zernioPostId) {
+      throw new PublishError("Resposta do Zernio sem `post._id` (POST /posts).");
     }
 
-    const platformResult = data.platforms?.find(
-      (p) => p.platform === input.network
-    );
-    if (!platformResult) {
+    // IMPORTANTE (débito técnico conhecido, ver PLAN.md M12): a partir daqui
+    // o post JÁ foi submetido ao Zernio de forma irreversível — se o polling
+    // abaixo esgotar sem resolver, ou a função for interrompida, não existe
+    // hoje um jeito seguro de o cron de publicação saber que não deve
+    // reenviar no próximo ciclo (o gate atual é post_url IS NULL). Resolver
+    // isso é o próximo item do M12 (webhook do Zernio, ou gravar
+    // zernio_post_id antes de resolver o resultado final).
+    const resolved = await this.pollUntilResolved(apiKey, zernioPostId, input.network);
+
+    if (resolved.error) {
       throw new PublishError(
-        `Resposta do Zernio sem resultado para a plataforma "${input.network}".`
+        `Zernio falhou ao publicar em ${input.network} (id do post: ${zernioPostId}): ${resolved.error}`
       );
     }
-    if (platformResult.error) {
+    if (!resolved.platformPostUrl) {
       throw new PublishError(
-        `Zernio falhou ao publicar em ${input.network}: ${platformResult.error}`
-      );
-    }
-    if (!platformResult.publishedUrl) {
-      // Documentado: o TikTok expõe o ID do vídeo de forma assíncrona (via
-      // webhook post.tiktok.url_resolved), não na resposta síncrona do
-      // POST /posts. Sem webhook implementado ainda, tratamos como falha
-      // explícita em vez de gravar um post_url vazio — nunca falha em
-      // silêncio, mesmo padrão do resto do projeto.
-      throw new PublishError(
-        `Zernio aceitou a publicação em ${input.network}, mas ainda não retornou o link público na resposta síncrona (comum no TikTok, que resolve o link via webhook assíncrono — sem suporte a webhooks ainda neste projeto).`
+        `Zernio não resolveu a publicação em ${input.network} a tempo (id do post: ${zernioPostId}, ${PUBLISH_POLL_MAX_ATTEMPTS * PUBLISH_POLL_INTERVAL_MS / 1000}s de espera) — conferir manualmente em zernio.com/dashboard antes de tentar de novo, pode já ter sido publicado.`
       );
     }
 
-    return { postUrl: platformResult.publishedUrl, zernioPostId: data.id };
+    return { postUrl: resolved.platformPostUrl, zernioPostId };
+  }
+
+  private async pollUntilResolved(
+    apiKey: string,
+    zernioPostId: string,
+    network: string
+  ): Promise<{ platformPostUrl?: string; error?: string }> {
+    for (let attempt = 0; attempt < PUBLISH_POLL_MAX_ATTEMPTS; attempt++) {
+      await sleep(PUBLISH_POLL_INTERVAL_MS);
+
+      let response: Response;
+      try {
+        response = await fetch(`${ZERNIO_BASE_URL}/posts/${zernioPostId}`, {
+          headers: authHeaders(apiKey),
+        });
+      } catch {
+        continue; // falha de rede pontual durante o polling — tenta de novo
+      }
+      if (!response.ok) continue;
+
+      const data = (await response.json().catch(() => null)) as {
+        post?: ZernioPostState;
+      } | null;
+
+      const platformState = data?.post?.platforms?.find(
+        (p) => p.platform === network
+      );
+      if (!platformState) continue;
+
+      if (platformState.status === "published" && platformState.platformPostUrl) {
+        return { platformPostUrl: platformState.platformPostUrl };
+      }
+      if (platformState.status === "failed" || platformState.error) {
+        return { error: platformState.error ?? "status failed sem detalhe." };
+      }
+      // "processing"/"publishing" — continua tentando.
+    }
+
+    return {}; // esgotou o tempo sem resolver
   }
 
   /**
@@ -126,14 +195,17 @@ export class ZernioProvider implements PublishingProvider {
     let mediaResponse: Response;
     try {
       mediaResponse = await fetch(sourceUrl);
-    } catch {
-      throw new PublishError("Falha de rede ao baixar a mídia para envio ao Zernio.");
+    } catch (err) {
+      throw new PublishError(
+        `Falha de rede ao baixar a mídia para envio ao Zernio: ${describeThrown(err)}`
+      );
     }
     if (!mediaResponse.ok) {
       throw new PublishError(
         `Falha ao baixar a mídia (${mediaResponse.status}) antes de enviar ao Zernio.`
       );
     }
+    const extension = mediaType === "image" ? "png" : "mp4";
     const contentType =
       mediaResponse.headers.get("content-type") ??
       (mediaType === "image" ? "image/png" : "video/mp4");
@@ -144,11 +216,17 @@ export class ZernioProvider implements PublishingProvider {
       presignResponse = await fetch(`${ZERNIO_BASE_URL}/media/presign`, {
         method: "POST",
         headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
-        body: JSON.stringify({ contentType, type: mediaType }),
+        // O campo obrigatório é `filename` (não `type`) — confirmado testando
+        // diretamente contra a API real em 09/07/2026; a doc pública não
+        // deixava isso claro.
+        body: JSON.stringify({
+          filename: `puzzle-records.${extension}`,
+          contentType,
+        }),
       });
-    } catch {
+    } catch (err) {
       throw new PublishError(
-        "Falha de rede ao chamar a API do Zernio (POST /media/presign)."
+        `Falha de rede ao chamar a API do Zernio (POST /media/presign): ${describeThrown(err)}`
       );
     }
     if (!presignResponse.ok) {
@@ -172,9 +250,9 @@ export class ZernioProvider implements PublishingProvider {
         headers: { "Content-Type": contentType },
         body: mediaBytes,
       });
-    } catch {
+    } catch (err) {
       throw new PublishError(
-        "Falha de rede ao subir a mídia para a URL pré-assinada do Zernio."
+        `Falha de rede ao subir a mídia para a URL pré-assinada do Zernio: ${describeThrown(err)}`
       );
     }
     if (!uploadResponse.ok) {
@@ -196,8 +274,10 @@ export class ZernioProvider implements PublishingProvider {
         `${ZERNIO_BASE_URL}/analytics?postId=${encodeURIComponent(zernioPostId)}`,
         { headers: authHeaders(apiKey) }
       );
-    } catch {
-      throw new PublishError("Falha de rede ao chamar a API do Zernio (GET /analytics).");
+    } catch (err) {
+      throw new PublishError(
+        `Falha de rede ao chamar a API do Zernio (GET /analytics): ${describeThrown(err)}`
+      );
     }
 
     if (response.status === 202) {
