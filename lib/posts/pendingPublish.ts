@@ -9,9 +9,11 @@ export interface PostPendingPublish {
   id: string;
   caption: string;
   rendered_art_url: string;
+  media_type: "image" | "video";
   social_account_id: string | null;
   social_account: {
     zernio_account_id: string | null;
+    network: string;
     display_name: string;
   } | null;
 }
@@ -26,7 +28,7 @@ export async function listPostsPendingPublish(): Promise<
   const { data, error } = await supabase
     .from("posts")
     .select(
-      "id, caption, rendered_art_url, content_source, scheduled_at, social_account_id, social_account:social_accounts(zernio_account_id, display_name)"
+      "id, caption, rendered_art_url, media_type, content_source, scheduled_at, social_account_id, social_account:social_accounts(zernio_account_id, network, display_name)"
     )
     .eq("status", "aprovado")
     .not("rendered_art_url", "is", null)
@@ -67,10 +69,11 @@ export async function listPostsPendingPublish(): Promise<
   });
 
   return eligible.map(
-    ({ id, caption, rendered_art_url, social_account_id, social_account }) => ({
+    ({ id, caption, rendered_art_url, media_type, social_account_id, social_account }) => ({
       id,
       caption,
       rendered_art_url,
+      media_type,
       social_account_id,
       social_account,
     })

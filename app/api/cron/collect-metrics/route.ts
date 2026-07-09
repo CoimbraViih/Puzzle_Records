@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   for (const post of posts) {
     try {
-      const metrics = await provider.getMetrics(post.post_url);
+      const metrics = await provider.getMetrics(post.zernio_post_id);
       await upsertPostMetrics(post.id, metrics);
       collected += 1;
     } catch (err) {

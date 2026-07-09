@@ -34,7 +34,8 @@ async function recordPublishError(postId: string, message: string) {
 // registrado, o que causaria uma republicacao duplicada no Zernio.
 async function recordPublishSucceededButStatusFailed(
   postId: string,
-  postUrl: string
+  postUrl: string,
+  zernioPostId: string
 ) {
   const supabase = createServiceClient();
   const { error } = await supabase
@@ -42,6 +43,7 @@ async function recordPublishSucceededButStatusFailed(
     .update({
       publish_error: `Publicado no Zernio (${postUrl}) mas falha ao gravar o status — verificar manualmente.`,
       post_url: postUrl,
+      zernio_post_id: zernioPostId,
     })
     .eq("id", postId);
   if (error) {
@@ -125,10 +127,13 @@ export async function GET(request: Request) {
 
   for (const post of pending) {
     const zernioAccountId = post.social_account?.zernio_account_id ?? null;
-    if (!zernioAccountId) {
+    const network = post.social_account?.network ?? null;
+    if (!zernioAccountId || !network) {
       await recordPublishError(
         post.id,
-        "Conta social sem zernio_account_id configurado (ver /admin/contas)."
+        !zernioAccountId
+          ? "Conta social sem zernio_account_id configurado (ver /admin/contas)."
+          : "Post sem conta social vinculada."
       );
       continue;
     }
@@ -161,10 +166,12 @@ export async function GET(request: Request) {
     }
 
     try {
-      const { postUrl } = await provider.publish({
+      const { postUrl, zernioPostId } = await provider.publish({
         postId: post.id,
         zernioAccountId,
+        network,
         mediaUrl: signedUrl.signedUrl,
+        mediaType: post.media_type,
         caption: post.caption,
       });
 
@@ -174,6 +181,7 @@ export async function GET(request: Request) {
           status: "publicado",
           published_at: new Date().toISOString(),
           post_url: postUrl,
+          zernio_post_id: zernioPostId,
           publish_error: null,
         })
         .eq("id", post.id);
@@ -186,7 +194,7 @@ export async function GET(request: Request) {
         if (post.social_account_id) {
           await recordPublishSuccessOnAccount(post.social_account_id);
         }
-        await recordPublishSucceededButStatusFailed(post.id, postUrl);
+        await recordPublishSucceededButStatusFailed(post.id, postUrl, zernioPostId);
         continue;
       }
       published += 1;

@@ -3,7 +3,7 @@ import { METRICS_COLLECTION_WINDOW_DAYS } from "./constants";
 
 export interface PostForMetricsCollection {
   id: string;
-  post_url: string;
+  zernio_post_id: string;
 }
 
 export async function listPostsForMetricsCollection(): Promise<
@@ -14,11 +14,13 @@ export async function listPostsForMetricsCollection(): Promise<
     Date.now() - METRICS_COLLECTION_WINDOW_DAYS * 24 * 60 * 60 * 1000
   ).toISOString();
 
+  // GET /v1/analytics do Zernio busca por postId (ID interno deles), não
+  // pelo link público (post_url) — auditoria do M12 contra docs.zernio.com.
   const { data, error } = await supabase
     .from("posts")
-    .select("id, post_url, published_at")
+    .select("id, zernio_post_id, published_at")
     .eq("status", "publicado")
-    .not("post_url", "is", null)
+    .not("zernio_post_id", "is", null)
     .gte("published_at", cutoff);
 
   if (error) {
@@ -31,7 +33,7 @@ export async function listPostsForMetricsCollection(): Promise<
 
   return (data ?? []).map((post) => ({
     id: post.id,
-    post_url: post.post_url as string,
+    zernio_post_id: post.zernio_post_id as string,
   }));
 }
 
