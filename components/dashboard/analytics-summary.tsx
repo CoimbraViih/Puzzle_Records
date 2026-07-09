@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { AnalyticsSummary } from "@/lib/analytics/queries";
 
 function SummaryTable({
@@ -42,12 +44,21 @@ function SummaryTable({
   );
 }
 
-export function AnalyticsSummarySection({ summary }: { summary: AnalyticsSummary }) {
+export function AnalyticsSummarySection({
+  summary,
+  headerAction,
+}: {
+  summary: AnalyticsSummary;
+  headerAction?: ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-foreground">
-        Analytics (últimos 30 dias)
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-foreground">
+          Analytics (últimos 30 dias)
+        </h2>
+        {headerAction}
+      </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <SummaryTable
           title="Por conta"
