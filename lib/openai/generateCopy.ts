@@ -6,9 +6,14 @@ const OPENAI_ROUTINE_MODEL = "gpt-4o-mini";
 const OPENAI_LAUNCH_MODEL = "gpt-4o";
 
 // Modelos gratuitos do OpenRouter (só para teste, ver lib/openai/client.ts).
-// Overridáveis por env var caso o modelo padrão saia do catálogo grátis.
+// Overridáveis por env var caso o modelo padrão saia do catálogo grátis —
+// o catálogo muda com frequência, e modelos grátis populares (ex.:
+// meta-llama/llama-3.3-70b-instruct, qwen3-next-80b) ficam sujeitos a
+// rate-limit 429 do provedor upstream sob carga, mesmo com chave válida.
+// "openai/gpt-oss-20b:free" validado manualmente em 09/07/2026 (ver M11 em
+// PLAN.md) — sem garantia de disponibilidade permanente.
 const OPENROUTER_ROUTINE_MODEL =
-  process.env.OPENROUTER_MODEL_ROUTINE ?? "meta-llama/llama-3.3-70b-instruct:free";
+  process.env.OPENROUTER_MODEL_ROUTINE ?? "openai/gpt-oss-20b:free";
 const OPENROUTER_LAUNCH_MODEL =
   process.env.OPENROUTER_MODEL_LAUNCH ?? OPENROUTER_ROUTINE_MODEL;
 

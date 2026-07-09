@@ -8,6 +8,11 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // api/cron excluído: essas rotas se autenticam sozinhas via CRON_SECRET
+    // (Bearer token), nunca com sessão de usuário Supabase — sem essa
+    // exclusão, o gate "sem usuário → 401" abaixo bloqueava toda chamada de
+    // cron antes mesmo da rota checar o CRON_SECRET, inclusive as chamadas
+    // legítimas da própria Vercel.
+    "/((?!_next/static|_next/image|favicon.ico|api/cron|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
