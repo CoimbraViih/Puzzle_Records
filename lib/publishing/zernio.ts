@@ -4,7 +4,7 @@ import type {
   PublishingProvider,
   PublishResult,
 } from "./types";
-import { PublishError } from "./types";
+import { PublishError, PublishPendingError } from "./types";
 
 // Base URL confirmada em docs.zernio.com (auditoria do M12) — antes era um
 // valor "assumido" sem doc real disponível (débito técnico do M7).
@@ -149,8 +149,12 @@ export class ZernioProvider implements PublishingProvider {
       );
     }
     if (!resolved.platformPostUrl) {
-      throw new PublishError(
-        `Zernio não resolveu a publicação em ${network} a tempo (id do post: ${zernioPostId}, ${(PUBLISH_POLL_MAX_ATTEMPTS * PUBLISH_POLL_INTERVAL_MS) / 1000}s de espera) — vai ser reconsultado de novo no próximo ciclo do cron, sem reenviar.`
+      // PublishPendingError (não PublishError genérico): ainda não é uma
+      // falha, só não resolveu dentro da janela de polling desta chamada —
+      // quem chama deve reconsultar no próximo ciclo, sem contar como falha
+      // de conta nem bloquear o post de ser reconsultado (ver route.ts).
+      throw new PublishPendingError(
+        `Zernio não resolveu a publicação em ${network} a tempo (id do post: ${zernioPostId}, ${(PUBLISH_POLL_MAX_ATTEMPTS * PUBLISH_POLL_INTERVAL_MS) / 1000}s de espera) — será reconsultado no próximo ciclo do cron, sem reenviar.`
       );
     }
 

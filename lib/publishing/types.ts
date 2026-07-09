@@ -54,3 +54,12 @@ export interface PublishingProvider {
 
 /** Lançado por qualquer PublishingProvider em falha — nunca lança erro genérico. */
 export class PublishError extends Error {}
+
+/**
+ * Subtipo de PublishError para "ainda não resolvido, tenta de novo depois"
+ * (ex: o Zernio ainda está processando a publicação) — distinto de uma
+ * falha real. Quem chama deve tratar isso sem contar como falha de conta
+ * nem bloquear o post de ser reconsultado no próximo ciclo do cron (não
+ * deve gravar em `publish_error`, que exclui o post das próximas buscas).
+ */
+export class PublishPendingError extends PublishError {}

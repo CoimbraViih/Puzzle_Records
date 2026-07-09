@@ -11,4 +11,4 @@ export type {
   PublishingProvider,
   PostMetrics,
 } from "./types";
-export { PublishError } from "./types";
+export { PublishError, PublishPendingError } from "./types";

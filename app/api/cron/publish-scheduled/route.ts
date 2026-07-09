@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { getPublishingProvider, PublishError } from "@/lib/publishing";
+import {
+  getPublishingProvider,
+  PublishError,
+  PublishPendingError,
+} from "@/lib/publishing";
 import {
   listPostsPendingPublish,
   PUBLISHING_CLAIM_SENTINEL,
@@ -22,6 +26,26 @@ async function recordPublishError(postId: string, message: string) {
   if (error) {
     console.error(
       `[publish-scheduled] falha ao gravar publish_error do post ${postId}:`,
+      error.message
+    );
+  }
+}
+
+// Post já submetido ao Zernio (zernio_post_id gravado por onSubmitted), mas
+// que ainda não resolveu dentro da janela de polling desta chamada — não é
+// uma falha. Limpa a sentinela de claim (publish_error) sem tocar em
+// zernio_post_id, para que listPostsPendingPublish() volte a incluir este
+// post no próximo ciclo do cron, que vai chamar resolvePendingPublish() em
+// vez de publish() (zernio_post_id continua preenchido).
+async function recordPublishPending(postId: string) {
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("posts")
+    .update({ publish_error: null })
+    .eq("id", postId);
+  if (error) {
+    console.error(
+      `[publish-scheduled] falha ao limpar claim pendente do post ${postId}:`,
       error.message
     );
   }
@@ -221,6 +245,14 @@ export async function GET(request: Request) {
         await recordPublishSuccessOnAccount(post.social_account_id);
       }
     } catch (err) {
+      if (err instanceof PublishPendingError) {
+        // Ainda processando do lado do Zernio — não é falha: não conta
+        // contra a conta, e libera o post para ser reconsultado (não
+        // resubmetido) no próximo ciclo do cron.
+        console.error(`[publish-scheduled] post ${post.id} ainda pendente:`, err.message);
+        await recordPublishPending(post.id);
+        continue;
+      }
       const message =
         err instanceof PublishError
           ? err.message
