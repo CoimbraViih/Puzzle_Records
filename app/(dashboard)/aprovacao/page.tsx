@@ -1,4 +1,4 @@
-import { KanbanBoard } from "@/components/kanban/board";
+import { FilterableBoard } from "@/components/kanban/filterable-board";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { listArtists, listPosts, listSocialAccounts } from "@/lib/posts/queries";
@@ -21,7 +21,7 @@ export default async function AprovacaoPage() {
       />
 
       {profile && (
-        <KanbanBoard
+        <FilterableBoard
           posts={posts}
           currentUserId={profile.id}
           role={profile.role}
