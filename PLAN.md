@@ -190,10 +190,103 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 **Débito técnico conhecido** (baixa prioridade, achados aceitos na revisão final e na revisão fresh-eyes pós-merge): `buildWeeklySummary` degrada erros das queries secundárias para 0/[] só com log — o e-mail semanal pode mostrar "0 falhas / nenhuma conta desconectada" numa semana em que a query falhou (a query principal ainda falha alto com 500; follow-up sugerido: nota de "dados parciais" no corpo do e-mail); `post.postUrl` no e-mail semanal é escapado mas sem whitelist de scheme http(s) no href (origem é a resposta de publicação do Zernio, risco residual baixo); regex de diacríticos (`filterPosts.ts`) e BOM (`csv.ts`) como codepoints literais invisíveis no fonte em vez de escapes `\uXXXX` (cosmético, funcionalmente verificado); `timeInSaoPaulo` computado 2× por post no JSX do calendário; casts manuais `as unknown as Row` para embeds do Supabase (padrão pré-existente do repo); cron `weekly-report` sem idempotência — uma reentrega da invocação pelo Vercel Cron ou uma segunda chamada manual com o `CRON_SECRET` reenvia o e-mail semanal duplicado (sem claim de "já processado nesta janela", diferente dos crons de publicação/desconexão).
 
+## Pós-M10 — Remoção do Resend (09/07/2026)
+
+**Objetivo**: preparar o projeto para os primeiros testes práticos, cortando uma integração que o Victor decidiu não usar.
+
+- [x] Removido por completo: `lib/email/` (client, `notifyApprovers`, `notifyAccountDisconnected`, `recipients`, `templates`), crons `app/api/cron/sla-alert/` e `app/api/cron/weekly-report/`, `lib/reports/weeklySummary.ts`, dependência `resend` do `package.json`, entradas de `RESEND_API_KEY`/`RESEND_FROM_EMAIL` do `.env.example` e das duas rotas removidas do `vercel.json`.
+- [x] `lib/posts/actions.ts` (`submitForApproval`) não notifica mais aprovadores por e-mail; `app/api/cron/publish-scheduled/route.ts` simplificado — ainda marca `connection_status: "desconectada"` no dashboard após 3 falhas consecutivas de publicação (sinal em-app preservado), só não envia mais e-mail de alerta; card do Kanban não mostra mais o aviso de `notification_error` (campo mantido no schema/tipo, só nunca mais escrito).
+- [x] Corrigidos dois erros de tipo pré-existentes em `lib/demo/mockData.ts` (WIP local, não commitado) que bloqueavam `npm run build`.
+- [x] Criado `.env.local` com `DEMO_MODE=1` ativo (permite clicar no painel inteiro sem nenhuma credencial real) e placeholders para as demais chaves.
+
+**Lacuna aberta**: SLA de aprovação vencido (4h) e conta social desconectada não têm mais nenhum canal ativo de alerta — hoje só aparecem passivamente no dashboard. `docs/CLAUDE.md` mantém a regra de "nunca alertar em silêncio"; decidir o canal de reposição é a primeira tarefa do M11 (ver abaixo).
+
+---
+
+## M11 — Produção (semana 1) — caminho crítico
+
+**Objetivo**: sair do código pronto-mas-nunca-rodado para um ambiente de produção real. O gargalo agora é operacional, não código — dez milestones foram implementados e revisados sem nunca tocar um projeto Supabase real.
+
+- [ ] Criar projeto Supabase real, aplicar as migrations `0001`–`0010` em ordem, criar o primeiro usuário admin.
+- [ ] Deploy na Vercel (`docs/DEPLOY.md`) + configurar as env vars restantes + registrar os crons (`vercel.json` já reflete a remoção do Resend).
+- [ ] Chave `OPENAI_API_KEY` real; Service Account do Google Drive + pasta compartilhada com o e-mail `client_email` (papel Editor).
+- [ ] Rodar em ordem os checklists manuais acumulados de M1 a M10 (ficam em `docs/plans/`) — é a validação de que o código escrito de fato funciona contra infraestrutura real.
+- [ ] Decidir o canal de notificação que substitui o Resend (recolocar Resend, ou outro canal — ex.: centro de notificações in-app, Slack/webhook) e implementá-lo. Sem isso, alertas de SLA/desconexão e relatório semanal continuam sem sair.
+
+**Pronto para avançar quando**: fluxo ponta a ponta em produção com post de teste — Drive → copy → arte → aprovação (sem publicar ainda).
+
+## M12 — Validação da publicação via Zernio (semana 2–3)
+
+**Objetivo**: substituir o stub especulativo de `lib/publishing/zernio.ts` (escrito sem documentação real da API — ver débito técnico do M7) por uma integração validada contra o Zernio de verdade.
+
+- [ ] Criar conta no Zernio e conectar `@puzzlerecordss` (Instagram) — grátis até 2 contas.
+- [ ] Obter a documentação real da API no painel do Zernio e auditar `lib/publishing/zernio.ts` contra ela: endpoints, autenticação, formato de payload, agendamento, resposta de status/link — corrigir todas as divergências do formato assumido.
+- [ ] Validar publicação real: imagem primeiro, vídeo/Reels em seguida; conferir como o Zernio expõe link do post e métricas, e ajustar `collect-metrics` de acordo.
+- [ ] Healthcheck da conexão alimentando o alerta do M9 (hoje só indireto, via falhas consecutivas de publicação).
+- [ ] Prazo de decisão de no máximo 1 semana de validação: se a API real do Zernio for insuficiente (sem agendamento confiável, sem métricas, sem vídeo), acionar a rota Meta própria já mapeada em `ANATOMIA-TEMPLATES-VIDEO.md` seção 5 (produto "Instagram API with Instagram Login", escopos `instagram_business_basic` + `content_publish` + `manage_insights`, dev mode sem App Review para contas próprias) em vez de insistir.
+
+**Decisão da sessão de 09/07**: manter o Zernio como está (adapter já escrito, plano grátis até 2 contas) em vez de partir direto para a rota Meta própria. A `PublishingProvider` isolada (`lib/publishing/`) já garante que trocar de fornecedor, se necessário, é uma troca de implementação, não um redesenho.
+
+**Aceite (go-live)**: post aprovado publica sozinho no `@puzzlerecordss` no horário agendado, com link e métricas voltando ao dashboard.
+
+## M13 — Piloto assistido (semana 3–5)
+
+**Objetivo**: validar o sistema em operação real antes de investir nos próximos milestones.
+
+- [ ] 2 semanas de operação real: equipe usa o Drive, aprovador usa a fila, 2–3 posts/dia.
+- [ ] Meta: ≥80% dos posts saindo pelo sistema (mesmo critério de sucesso do MVP definido no topo deste documento).
+- [ ] Ajustes finos de prompt (tom das manchetes) com base nos posts reais.
+- [ ] Encerrar o débito técnico do M5 (PNGs órfãos no Storage, trava de sobreposição de cron) se incomodar na operação — não bloqueante, só se virar dor real.
+
+**Pronto para avançar quando**: 2 semanas de operação real completas, com a meta de ≥80% atingida ou um diagnóstico claro do que está impedindo.
+
+## M14 — Motor e página de templates de vídeo (semana 5–8)
+
+**Objetivo**: fechar a lacuna de vídeo deixada em aberto desde o M5 (hoje grava erro explícito em vez de gerar arte) com um motor de templates de nível B (anatomia estilo Cut.Pro — ver `ANATOMIA-TEMPLATES-VIDEO.md`).
+
+- [ ] Motor: Remotion + Whisper (timestamps por palavra) + FFmpeg; template "Puzzle v1" configurável (caixa `#96DB12`, legendas estilo viral, logo, barra de progresso).
+- [ ] Worker de render fora da Vercel (Railway) — função serverless não é o ambiente certo para render de vídeo; preview em 480p na fila de aprovação.
+- [ ] Testar Whisper com gíria de funk na primeira semana do milestone — maior risco técnico do MVP; fallback: legenda revisável manualmente na fila caso a transcrição não seja confiável.
+- [ ] Nova página `/templates`: galeria com preview (estilo Cut.Pro), formulário de customização (cores, fonte, estilo de legenda, posição do título, elementos on/off) — sem timeline visual no MVP.
+- [ ] Repositório de templates — **decisão de arquitetura da sessão de 09/07: rota A**, tabela `templates` própria no Supabase (cada template é um JSON de configuração renderizado pelos componentes Remotion/Satori; galeria, duplicação e edição em `/templates`). Zero custo, versionável, controle total sobre a identidade visual — mesmo modelo que a Cut.Pro usa por trás. Duas rotas descartadas por ora: IA generativa (Nano Banana/Gemini não criam templates nem editam vídeo — servem só como complemento para gerar assets de imagem dentro dos templates, ex. montagens de artista, fundos de news card, thumbnails); Canva Connect API (autofill de brand templates exige plano Enterprise do Canva, dependência externa, menos controle sobre legendas sincronizadas — fica como integração futura só se a equipe já operar no Canva com plano compatível).
+
+**Pronto para avançar quando**: um vídeo de exemplo passa pelo motor de templates com legenda sincronizada e sai com a identidade visual da Puzzle Records; a página `/templates` permite escolher e customizar um template sem editar código.
+
+## M15 — TikTok + escala (Fase 3, sob demanda)
+
+**Objetivo**: expandir para além do Instagram e de uma única conta, só quando a operação pedir.
+
+- [ ] TikTok pelo próprio Zernio (se coberto pelo plano) ou API oficial deles.
+- [ ] Multi-contas de artistas — avaliar custo por conta do Zernio (~US$ 1–6/conta) vs. migrar para a rota Meta própria (blueprint já mapeado no M12).
+- [ ] Permissões por artista.
+- [ ] Nota: a Fase 4 (SaaS multi-tenant, ver abaixo) exigiria App Review da Meta para publicar em contas de terceiros — só relevante se o produto for além do uso interno da Puzzle Records.
+
+**Pronto para avançar quando**: publicação funcionando em pelo menos mais uma rede além do Instagram, com múltiplas contas de artista operando em paralelo sem conflito de agendamento.
+
+---
+
+## Cronograma e custos revisados (M11–M15)
+
+| Semana | Entrega | Custo mensal acumulado |
+|---|---|---|
+| 1 | M11 produção validada | ~US$ 5–20 (OpenAI; resto grátis) |
+| 2–3 | M12 go-live publicando via Zernio | igual (Zernio grátis até 2 contas) |
+| 3–5 | M13 piloto assistido | igual |
+| 5–8 | M14 motor de templates de vídeo | + ~US$ 5–10 (worker) + Whisper (~US$ 0,006/min) |
+| Fase 3 | M15 TikTok/escala | conforme plano Zernio (~US$ 1–6/conta) |
+
+## Riscos desta versão (M11–M15)
+
+- **Validação acumulada (M11)**. Dez milestones de código sem nunca tocar produção = os problemas vão aparecer todos juntos na semana 1. Reservar a semana inteira para isso, sem paralelo.
+- **Adapter Zernio especulativo (M12)**. Escrito sem a documentação real da API. Orçar retrabalho e limitar a validação a 1 semana — se a API real não sustentar publicação agendada + vídeo + métricas, acionar a rota Meta própria (blueprint pronto) sem insistir.
+- **Zernio é fornecedor jovem** — healthcheck ativo + `PublishingProvider` isolada são as proteções; a rota Meta é o plano B permanente.
+- **Canal de notificação indefinido** (Resend removido nesta sessão) — decidir no M11; alertas silenciosos são o pior cenário operacional do sistema (`docs/CLAUDE.md`).
+- **M14 (vídeo) continua o marco tecnicamente mais arriscado** — testar Whisper com gíria de funk na primeira semana do milestone; fallback: legenda revisável na fila.
+
 ---
 
 ## Fases seguintes (fora do MVP)
 
 - **Fase 2** — insights de IA sobre performance, sugestão de pautas virais, feedback loop no prompt.
-- **Fase 3** — escala interna (10–30 contas de artista), permissões por artista, templates de lançamento.
+- **Fase 3** — escala interna (10–30 contas de artista), permissões por artista, templates de lançamento. Ver M15 acima para o primeiro passo (TikTok + multi-contas).
 - **Fase 4** — SaaS multi-tenant (só após Fases 1–3 comprovadas).

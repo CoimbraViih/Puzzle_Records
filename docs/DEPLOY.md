@@ -67,7 +67,6 @@ mesmos nomes:
 - `GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY`
 - `GOOGLE_DRIVE_FOLDER_ID`
 - `CRON_SECRET`
-- `RESEND_API_KEY`
 
 ## 5. Rodar localmente
 

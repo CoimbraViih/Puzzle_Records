@@ -3,10 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
-import { notifyApprovers } from "@/lib/email/notifyApprovers";
 import { renderArt, ArtRenderError } from "@/lib/renderer/renderArt";
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
 import { mediaTypeFromFile, uploadMedia } from "@/lib/posts/media";
 import type {
   CopyVariation,
@@ -189,56 +187,11 @@ export async function submitForApproval(postId: string, _formData: FormData) {
   const error = await updateStatus(postId, "pendente_aprovacao", {
     submitted_for_approval_at: new Date().toISOString(),
     sla_alert_sent_at: null,
-    // Limpa otimisticamente um notification_error de uma tentativa anterior;
-    // se notifyApprovers falhar de novo abaixo, a escrita via service client
-    // grava o novo erro por cima.
     notification_error: null,
   });
   if (error) return;
 
   revalidatePostPages();
-
-  const { data: post } = await (await createClient())
-    .from("posts")
-    .select("id, headline")
-    .eq("id", postId)
-    .single();
-
-  const notificationError = await notifyApprovers({
-    kind: "novo_post",
-    postId,
-    headline: post?.headline ?? null,
-  });
-  if (notificationError) {
-    // Usa o cliente de service-role em vez de updateStatus (request-scoped,
-    // sujeito a RLS): este post já está em 'pendente_aprovacao' e, para
-    // posts de origem Drive (created_by null), nenhuma policy de
-    // equipe_conteudo cobre UPDATE nesse status — este write é um registro
-    // de resultado de sistema, não uma edição de usuário, então segue o
-    // mesmo padrão do cron de SLA (lib/email/notifyApprovers.ts,
-    // supabase/migrations/0006_approval_queue.sql).
-    try {
-      const supabase = createServiceClient();
-      const { error: writeError } = await supabase
-        .from("posts")
-        .update({ notification_error: notificationError })
-        .eq("id", postId);
-
-      if (writeError) {
-        console.error(
-          "Falha ao gravar notification_error via service client:",
-          postId,
-          writeError
-        );
-      }
-    } catch (err) {
-      console.error(
-        "Falha inesperada ao gravar notification_error via service client:",
-        postId,
-        err
-      );
-    }
-  }
 }
 
 export async function approvePost(postId: string, _formData: FormData) {

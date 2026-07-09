@@ -13,10 +13,6 @@
       "schedule": "*/5 * * * *"
     },
     {
-      "path": "/api/cron/sla-alert",
-      "schedule": "*/30 * * * *"
-    },
-    {
       "path": "/api/cron/publish-scheduled",
       "schedule": "*/5 * * * *"
     },
@@ -27,10 +23,6 @@
     {
       "path": "/api/cron/collect-metrics",
       "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/cron/weekly-report",
-      "schedule": "0 12 * * 1"
     }
   ]
 }

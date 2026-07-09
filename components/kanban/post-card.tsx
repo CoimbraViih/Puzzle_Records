@@ -198,12 +198,6 @@ export function PostCard({
         </p>
       )}
 
-      {post.notification_error && (
-        <p className="rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-600 dark:text-amber-400">
-          Notificação por e-mail não enviada: {post.notification_error}
-        </p>
-      )}
-
       {post.publish_error && (
         <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
           Falha ao publicar: {post.publish_error}
