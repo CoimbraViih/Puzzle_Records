@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { AnalyticsSummary } from "@/lib/analytics/queries";
 
 function SummaryTable({
@@ -42,12 +44,29 @@ function SummaryTable({
   );
 }
 
-export function AnalyticsSummarySection({ summary }: { summary: AnalyticsSummary }) {
+export function AnalyticsSummarySection({
+  summary,
+  metricsErrorCount,
+  headerAction,
+}: {
+  summary: AnalyticsSummary;
+  metricsErrorCount: number;
+  headerAction?: ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-foreground">
-        Analytics (últimos 30 dias)
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-foreground">
+          Analytics (últimos 30 dias)
+        </h2>
+        {headerAction}
+      </div>
+      {metricsErrorCount > 0 && (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
+          ⚠️ {metricsErrorCount} post(s) com falha na coleta de métricas — os
+          números abaixo podem estar incompletos. Ver logs do cron collect-metrics.
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <SummaryTable
           title="Por conta"

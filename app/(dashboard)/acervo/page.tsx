@@ -1,5 +1,5 @@
-import { AcervoBoard } from "@/components/acervo/acervo-board";
 import { AcervoFormDialog } from "@/components/acervo/acervo-form-dialog";
+import { FilterableAcervoBoard } from "@/components/acervo/filterable-acervo-board";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { listAcervoPosts } from "@/lib/acervo/queries";
 import { listArtists, listSocialAccounts } from "@/lib/posts/queries";
@@ -23,7 +23,11 @@ export default async function AcervoPage() {
         }
       />
 
-      <AcervoBoard posts={posts} />
+      <FilterableAcervoBoard
+        posts={posts}
+        artists={artists}
+        socialAccounts={socialAccounts}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  CalendarDays,
   CheckSquare,
   Disc3,
   Library,
@@ -48,6 +49,12 @@ const NAV_GROUPS: NavGroup[] = [
         title: "Acervo",
         url: "/acervo",
         icon: Library,
+        roles: ["admin", "aprovador", "equipe_conteudo"],
+      },
+      {
+        title: "Calendário",
+        url: "/calendario",
+        icon: CalendarDays,
         roles: ["admin", "aprovador", "equipe_conteudo"],
       },
       {

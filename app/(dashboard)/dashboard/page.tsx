@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AnalyticsSummarySection } from "@/components/dashboard/analytics-summary";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
-import { listAnalyticsSummary } from "@/lib/analytics/queries";
+import { countMetricsErrors, listAnalyticsSummary } from "@/lib/analytics/queries";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { listArtists, listPosts, listSocialAccounts } from "@/lib/posts/queries";
 import { POST_STATUSES, POST_STATUS_LABELS } from "@/lib/types/post";
@@ -13,12 +13,14 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const profile = await getCurrentProfile();
-  const [posts, artists, socialAccounts, analyticsSummary] = await Promise.all([
-    listPosts(),
-    listArtists(),
-    listSocialAccounts(),
-    listAnalyticsSummary(),
-  ]);
+  const [posts, artists, socialAccounts, analyticsSummary, metricsErrorCount] =
+    await Promise.all([
+      listPosts(),
+      listArtists(),
+      listSocialAccounts(),
+      listAnalyticsSummary(),
+      countMetricsErrors(),
+    ]);
 
   const disconnectedAccounts = socialAccounts.filter(
     (account) => account.connection_status === "desconectada"
@@ -85,7 +87,19 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <AnalyticsSummarySection summary={analyticsSummary} />
+      <AnalyticsSummarySection
+        summary={analyticsSummary}
+        metricsErrorCount={metricsErrorCount}
+        headerAction={
+          <a
+            href="/api/reports/posts?dias=30"
+            download
+            className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium text-foreground hover:bg-muted/40"
+          >
+            Exportar CSV (30 dias)
+          </a>
+        }
+      />
 
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
         <h2 className="text-sm font-semibold text-card-foreground">

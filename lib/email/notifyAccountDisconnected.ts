@@ -24,7 +24,8 @@ export async function notifyAccountDisconnected(
 
     const { error: sendError } = await resend.emails.send({
       from: EMAIL_FROM,
-      to: recipients.emails,
+      to: EMAIL_FROM,
+      bcc: recipients.emails,
       subject: accountDisconnectedSubject(accountLabel),
       html: accountDisconnectedBody(accountLabel),
     });

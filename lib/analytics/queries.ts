@@ -104,3 +104,22 @@ export async function listAnalyticsSummary(): Promise<AnalyticsSummary> {
     byHour: Array.from(byHour.values()).sort((a, b) => a.key.localeCompare(b.key)),
   };
 }
+
+/**
+ * Conta posts cuja última coleta de métricas falhou (metrics_error
+ * preenchido). Débito do M9: sem isso, uma coleta persistentemente
+ * quebrada é invisível para o operador.
+ */
+export async function countMetricsErrors(): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("post_metrics")
+    .select("post_id", { count: "exact", head: true })
+    .not("metrics_error", "is", null);
+
+  if (error) {
+    console.error("[analytics] falha ao contar erros de coleta:", error.message);
+    return 0;
+  }
+  return count ?? 0;
+}

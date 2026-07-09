@@ -1,4 +1,4 @@
-import { KanbanBoard } from "@/components/kanban/board";
+import { FilterableBoard } from "@/components/kanban/filterable-board";
 import { PostFormDialog } from "@/components/kanban/post-form-dialog";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
@@ -30,7 +30,7 @@ export default async function ConteudoPage() {
       />
 
       {profile && (
-        <KanbanBoard
+        <FilterableBoard
           posts={posts}
           currentUserId={profile.id}
           role={profile.role}

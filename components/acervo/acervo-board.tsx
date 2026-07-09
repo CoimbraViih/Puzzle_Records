@@ -1,7 +1,7 @@
 import type { PostWithRelations } from "@/lib/types/post";
 import { SOCIAL_NETWORK_LABELS } from "@/lib/types/social-account";
 
-import { classifyAcervoState, type AcervoState } from "@/lib/acervo/queries";
+import { classifyAcervoState, type AcervoState } from "@/lib/acervo/classify";
 
 const COLUMNS: { state: AcervoState; label: string }[] = [
   { state: "novo", label: "Novo" },
