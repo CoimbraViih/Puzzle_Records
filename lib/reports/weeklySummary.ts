@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { PUBLISHING_CLAIM_SENTINEL } from "@/lib/posts/pendingPublish";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -53,7 +54,12 @@ export async function buildWeeklySummary(): Promise<
     supabase
       .from("posts")
       .select("id", { count: "exact", head: true })
-      .not("publish_error", "is", null),
+      .not("publish_error", "is", null)
+      // Exclui a sentinela de claim em andamento (não é falha real) e limita
+      // à janela do relatório usando updated_at como melhor proxy disponível
+      // para "falha observada nos últimos 7 dias" (não há failed_at dedicado).
+      .neq("publish_error", PUBLISHING_CLAIM_SENTINEL)
+      .gte("updated_at", weekStart.toISOString()),
     supabase
       .from("social_accounts")
       .select("display_name")

@@ -1,6 +1,11 @@
 function escapeField(value: string | number | null): string {
   if (value === null) return "";
-  const text = String(value);
+  let text = String(value);
+  // Neutraliza injeção de fórmula (Excel/Sheets interpretam =,+,-,@ no início
+  // da célula como fórmula — manchete/legenda são texto de IA/usuário).
+  if (/^[=+\-@\t\r]/.test(text)) {
+    text = "'" + text;
+  }
   if (/[",\r\n]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
   }

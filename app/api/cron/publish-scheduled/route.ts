@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getPublishingProvider, PublishError } from "@/lib/publishing";
-import { listPostsPendingPublish } from "@/lib/posts/pendingPublish";
+import {
+  listPostsPendingPublish,
+  PUBLISHING_CLAIM_SENTINEL,
+} from "@/lib/posts/pendingPublish";
 import { createServiceClient } from "@/lib/supabase/service";
 import { DISCONNECT_FAILURE_THRESHOLD } from "@/lib/analytics/constants";
 import { notifyAccountDisconnected } from "@/lib/email/notifyAccountDisconnected";
@@ -231,7 +234,7 @@ export async function GET(request: Request) {
 
     const { data: claimed, error: claimError } = await supabase
       .from("posts")
-      .update({ publish_error: "Publicando..." })
+      .update({ publish_error: PUBLISHING_CLAIM_SENTINEL })
       .eq("id", post.id)
       .eq("status", "aprovado")
       .is("publish_error", null)

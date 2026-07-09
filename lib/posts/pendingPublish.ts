@@ -1,5 +1,10 @@
 import { createServiceClient } from "@/lib/supabase/service";
 
+// Sentinela gravada em publish_error enquanto um post está sendo publicado
+// (claim atômico contra execuções concorrentes do cron). Não é um erro real
+// e não deve ser contada como falha de publicação.
+export const PUBLISHING_CLAIM_SENTINEL = "Publicando...";
+
 export interface PostPendingPublish {
   id: string;
   caption: string;
