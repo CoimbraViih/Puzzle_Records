@@ -74,7 +74,10 @@ function sleep(ms: number): Promise<void> {
 }
 
 export class ZernioProvider implements PublishingProvider {
-  async publish(input: PublishInput): Promise<PublishResult> {
+  async publish(
+    input: PublishInput,
+    onSubmitted?: (providerId: string) => Promise<void>
+  ): Promise<PublishResult> {
     const apiKey = requireApiKey();
 
     const mediaPublicUrl = await this.uploadMedia(
@@ -118,23 +121,36 @@ export class ZernioProvider implements PublishingProvider {
       throw new PublishError("Resposta do Zernio sem `post._id` (POST /posts).");
     }
 
-    // IMPORTANTE (débito técnico conhecido, ver PLAN.md M12): a partir daqui
-    // o post JÁ foi submetido ao Zernio de forma irreversível — se o polling
-    // abaixo esgotar sem resolver, ou a função for interrompida, não existe
-    // hoje um jeito seguro de o cron de publicação saber que não deve
-    // reenviar no próximo ciclo (o gate atual é post_url IS NULL). Resolver
-    // isso é o próximo item do M12 (webhook do Zernio, ou gravar
-    // zernio_post_id antes de resolver o resultado final).
-    const resolved = await this.pollUntilResolved(apiKey, zernioPostId, input.network);
+    // A partir daqui o post já foi submetido ao Zernio de forma
+    // irreversível — persiste o ID imediatamente (antes de saber o
+    // resultado final) para que uma interrupção no polling abaixo não
+    // resulte em reenvio duplicado numa tentativa futura (ver
+    // resolvePendingPublish, chamado pelo cron quando o post já tem um ID
+    // gravado).
+    if (onSubmitted) {
+      await onSubmitted(zernioPostId);
+    }
+
+    return this.resolvePendingPublish(zernioPostId, input.network);
+  }
+
+  /** Reconsulta (sem resubmeter) um post já aceito pelo Zernio numa chamada
+   * anterior de publish() que não chegou a resolver. */
+  async resolvePendingPublish(
+    zernioPostId: string,
+    network: string
+  ): Promise<PublishResult> {
+    const apiKey = requireApiKey();
+    const resolved = await this.pollUntilResolved(apiKey, zernioPostId, network);
 
     if (resolved.error) {
       throw new PublishError(
-        `Zernio falhou ao publicar em ${input.network} (id do post: ${zernioPostId}): ${resolved.error}`
+        `Zernio falhou ao publicar em ${network} (id do post: ${zernioPostId}): ${resolved.error}`
       );
     }
     if (!resolved.platformPostUrl) {
       throw new PublishError(
-        `Zernio não resolveu a publicação em ${input.network} a tempo (id do post: ${zernioPostId}, ${PUBLISH_POLL_MAX_ATTEMPTS * PUBLISH_POLL_INTERVAL_MS / 1000}s de espera) — conferir manualmente em zernio.com/dashboard antes de tentar de novo, pode já ter sido publicado.`
+        `Zernio não resolveu a publicação em ${network} a tempo (id do post: ${zernioPostId}, ${(PUBLISH_POLL_MAX_ATTEMPTS * PUBLISH_POLL_INTERVAL_MS) / 1000}s de espera) — vai ser reconsultado de novo no próximo ciclo do cron, sem reenviar.`
       );
     }
 

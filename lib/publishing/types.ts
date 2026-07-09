@@ -24,7 +24,28 @@ export interface PostMetrics {
 }
 
 export interface PublishingProvider {
-  publish(input: PublishInput): Promise<PublishResult>;
+  /**
+   * `onSubmitted` é chamado assim que o provedor confirma que aceitou o
+   * post (antes de saber o resultado final) — quem chama deve persistir
+   * esse ID imediatamente. A partir desse ponto a publicação já é
+   * irreversível do lado do provedor: se a função cair antes de `publish`
+   * resolver, uma nova chamada a `publish` para o mesmo post duplicaria a
+   * publicação. Nesse cenário, quem chama deve usar `resolvePendingPublish`
+   * com o ID já persistido, nunca `publish` de novo.
+   */
+  publish(
+    input: PublishInput,
+    onSubmitted?: (providerId: string) => Promise<void>
+  ): Promise<PublishResult>;
+  /**
+   * Reconsulta o resultado de um post já submetido anteriormente (ID vindo
+   * de um `onSubmitted` de uma chamada de `publish` que não chegou a
+   * resolver) — nunca submete de novo, só verifica o status atual.
+   */
+  resolvePendingPublish(
+    providerId: string,
+    network: string
+  ): Promise<PublishResult>;
   /** Lança PublishError em qualquer falha — nunca retorna dado parcial
    * silenciosamente. Recebe o zernioPostId gravado por publish(), não o
    * link público (a API de analytics do Zernio busca por postId). */

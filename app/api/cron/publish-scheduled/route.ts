@@ -166,14 +166,33 @@ export async function GET(request: Request) {
     }
 
     try {
-      const { postUrl, zernioPostId } = await provider.publish({
-        postId: post.id,
-        zernioAccountId,
-        network,
-        mediaUrl: signedUrl.signedUrl,
-        mediaType: post.media_type,
-        caption: post.caption,
-      });
+      // Se uma tentativa anterior já submeteu este post ao provedor mas não
+      // chegou a resolver (post.zernio_post_id já preenchido), reconsulta
+      // em vez de reenviar — reenviar duplicaria a publicação no Zernio.
+      const { postUrl, zernioPostId } = post.zernio_post_id
+        ? await provider.resolvePendingPublish(post.zernio_post_id, network)
+        : await provider.publish(
+            {
+              postId: post.id,
+              zernioAccountId,
+              network,
+              mediaUrl: signedUrl.signedUrl,
+              mediaType: post.media_type,
+              caption: post.caption,
+            },
+            async (providerId) => {
+              const { error: submittedError } = await supabase
+                .from("posts")
+                .update({ zernio_post_id: providerId })
+                .eq("id", post.id);
+              if (submittedError) {
+                console.error(
+                  `[publish-scheduled] falha ao gravar zernio_post_id do post ${post.id} logo após submissão:`,
+                  submittedError.message
+                );
+              }
+            }
+          );
 
       const { error } = await supabase
         .from("posts")

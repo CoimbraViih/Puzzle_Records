@@ -10,6 +10,10 @@ export interface PostPendingPublish {
   caption: string;
   rendered_art_url: string;
   media_type: "image" | "video";
+  /** Não-nulo quando uma tentativa anterior já submeteu o post ao provedor
+   * mas não chegou a resolver (ver PublishingProvider.resolvePendingPublish)
+   * — quando presente, o cron deve reconsultar em vez de reenviar. */
+  zernio_post_id: string | null;
   social_account_id: string | null;
   social_account: {
     zernio_account_id: string | null;
@@ -28,7 +32,7 @@ export async function listPostsPendingPublish(): Promise<
   const { data, error } = await supabase
     .from("posts")
     .select(
-      "id, caption, rendered_art_url, media_type, content_source, scheduled_at, social_account_id, social_account:social_accounts(zernio_account_id, network, display_name)"
+      "id, caption, rendered_art_url, media_type, zernio_post_id, content_source, scheduled_at, social_account_id, social_account:social_accounts(zernio_account_id, network, display_name)"
     )
     .eq("status", "aprovado")
     .not("rendered_art_url", "is", null)
@@ -69,11 +73,20 @@ export async function listPostsPendingPublish(): Promise<
   });
 
   return eligible.map(
-    ({ id, caption, rendered_art_url, media_type, social_account_id, social_account }) => ({
+    ({
       id,
       caption,
       rendered_art_url,
       media_type,
+      zernio_post_id,
+      social_account_id,
+      social_account,
+    }) => ({
+      id,
+      caption,
+      rendered_art_url,
+      media_type,
+      zernio_post_id,
       social_account_id,
       social_account,
     })
