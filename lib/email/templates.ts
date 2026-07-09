@@ -15,13 +15,29 @@ function sanitizeSubjectText(value: string): string {
   return value.replace(/[\r\n]+/g, " ");
 }
 
+/**
+ * Base absoluta dos links de e-mail. Sem NEXT_PUBLIC_SITE_URL o link sai
+ * relativo (quebrado no cliente de e-mail) — loga aviso para o deploy
+ * corrigir a env, sem bloquear o envio (aviso ruim > nenhum aviso).
+ */
+function absoluteUrl(path: string): string {
+  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!base) {
+    console.warn(
+      "[email] NEXT_PUBLIC_SITE_URL não configurada — links de e-mail sairão relativos."
+    );
+    return path;
+  }
+  return `${base}${path}`;
+}
+
 export function newPostSubject(headline: string | null) {
   const safeHeadline = headline ? sanitizeSubjectText(headline) : null;
   return `Novo post aguardando aprovação${safeHeadline ? `: ${safeHeadline}` : ""}`;
 }
 
 export function newPostBody(postId: string, headline: string | null) {
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/aprovacao`;
+  const url = absoluteUrl("/aprovacao");
   const safeHeadline = headline ? escapeHtml(headline) : null;
   return `<p>Um post está aguardando sua aprovação${
     safeHeadline ? `: <strong>${safeHeadline}</strong>` : ""
@@ -34,7 +50,7 @@ export function slaAlertSubject(headline: string | null) {
 }
 
 export function slaAlertBody(postId: string, headline: string | null) {
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/aprovacao`;
+  const url = absoluteUrl("/aprovacao");
   const safeHeadline = headline ? escapeHtml(headline) : null;
   return `<p>Um post está pendente de aprovação há mais de 4 horas${
     safeHeadline ? `: <strong>${safeHeadline}</strong>` : ""
@@ -46,7 +62,7 @@ export function accountDisconnectedSubject(accountLabel: string) {
 }
 
 export function accountDisconnectedBody(accountLabel: string) {
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/admin/contas`;
+  const url = absoluteUrl("/admin/contas");
   const safeLabel = escapeHtml(accountLabel);
   return `<p>A conta <strong>${safeLabel}</strong> falhou ao publicar ${DISCONNECT_FAILURE_THRESHOLD} vezes seguidas — possível desconexão no Zernio.</p><p><a href="${url}">Abrir /admin/contas</a></p>`;
 }
@@ -61,7 +77,7 @@ export function weeklyReportSubject(weekEndIso: string) {
 }
 
 export function weeklyReportBody(summary: WeeklySummary) {
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/dashboard`;
+  const url = absoluteUrl("/dashboard");
   const top = summary.topPosts
     .map((post) => {
       const label = escapeHtml(post.headline ?? post.caption ?? "Post");

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AnalyticsSummarySection } from "@/components/dashboard/analytics-summary";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
-import { listAnalyticsSummary } from "@/lib/analytics/queries";
+import { countMetricsErrors, listAnalyticsSummary } from "@/lib/analytics/queries";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { listArtists, listPosts, listSocialAccounts } from "@/lib/posts/queries";
 import { POST_STATUSES, POST_STATUS_LABELS } from "@/lib/types/post";
@@ -13,12 +13,14 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const profile = await getCurrentProfile();
-  const [posts, artists, socialAccounts, analyticsSummary] = await Promise.all([
-    listPosts(),
-    listArtists(),
-    listSocialAccounts(),
-    listAnalyticsSummary(),
-  ]);
+  const [posts, artists, socialAccounts, analyticsSummary, metricsErrorCount] =
+    await Promise.all([
+      listPosts(),
+      listArtists(),
+      listSocialAccounts(),
+      listAnalyticsSummary(),
+      countMetricsErrors(),
+    ]);
 
   const disconnectedAccounts = socialAccounts.filter(
     (account) => account.connection_status === "desconectada"
@@ -87,6 +89,7 @@ export default async function DashboardPage() {
 
       <AnalyticsSummarySection
         summary={analyticsSummary}
+        metricsErrorCount={metricsErrorCount}
         headerAction={
           <a
             href="/api/reports/posts?dias=30"
