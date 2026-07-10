@@ -1,5 +1,6 @@
 import { FilterableBoard } from "@/components/kanban/filterable-board";
 import { PostFormDialog } from "@/components/kanban/post-form-dialog";
+import { QuickPostDialog } from "@/components/kanban/quick-post-dialog";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { listPosts, listSocialAccounts } from "@/lib/posts/queries";
@@ -19,11 +20,14 @@ export default async function ConteudoPage() {
         title="Fila de posts"
         description="Acompanhe o pipeline de conteúdo, do rascunho à aprovação."
         actions={
-          <PostFormDialog
-            mode="create"
-            socialAccounts={socialAccounts}
-            triggerLabel="Novo post"
-          />
+          <div className="flex gap-2">
+            <QuickPostDialog socialAccounts={socialAccounts} />
+            <PostFormDialog
+              mode="create"
+              socialAccounts={socialAccounts}
+              triggerLabel="Novo post"
+            />
+          </div>
         }
       />
 
