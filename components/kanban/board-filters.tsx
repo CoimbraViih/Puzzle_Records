@@ -18,6 +18,7 @@ import {
 const CONTENT_SOURCE_LABELS: Record<ContentSource, string> = {
   drive: "Drive",
   acervo: "Acervo",
+  painel: "Painel",
 };
 
 const SELECT_CLASSES =

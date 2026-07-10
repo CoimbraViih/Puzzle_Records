@@ -1,15 +1,14 @@
 import { FilterableBoard } from "@/components/kanban/filterable-board";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
-import { listArtists, listPosts, listSocialAccounts } from "@/lib/posts/queries";
+import { listPosts, listSocialAccounts } from "@/lib/posts/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function AprovacaoPage() {
   const profile = await getCurrentProfile();
-  const [posts, artists, socialAccounts] = await Promise.all([
+  const [posts, socialAccounts] = await Promise.all([
     listPosts(),
-    listArtists(),
     listSocialAccounts(),
   ]);
 
@@ -25,7 +24,6 @@ export default async function AprovacaoPage() {
           posts={posts}
           currentUserId={profile.id}
           role={profile.role}
-          artists={artists}
           socialAccounts={socialAccounts}
         />
       )}
