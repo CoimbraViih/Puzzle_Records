@@ -24,7 +24,6 @@ function revalidatePostPages() {
 
 function readPostFields(formData: FormData) {
   return {
-    artist_id: (formData.get("artist_id") as string) || null,
     social_account_id: String(formData.get("social_account_id") ?? ""),
     template: String(formData.get("template") ?? "") as PostTemplate,
     post_type: String(formData.get("post_type") ?? "") as PostType,
