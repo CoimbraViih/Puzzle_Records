@@ -5,7 +5,7 @@ import {
   CopyGenerationError,
   generateCopyVariations,
 } from "@/lib/openai/generateCopy";
-import { listPostsPendingCopy } from "@/lib/posts/pendingCopy";
+import { listPostsPendingCopy, type PostPendingCopy } from "@/lib/posts/pendingCopy";
 import { createServiceClient } from "@/lib/supabase/service";
 
 function isAuthorized(request: Request): boolean {
@@ -39,6 +39,38 @@ async function recordCopyGenerationError(
   }
 }
 
+async function downloadMedia(
+  supabase: SupabaseClient,
+  path: string
+): Promise<Buffer> {
+  const { data, error } = await supabase.storage.from("posts-media").download(path);
+  if (error || !data) {
+    throw new Error("Falha ao baixar mídia do Storage pra análise de vídeo.");
+  }
+  return Buffer.from(await data.arrayBuffer());
+}
+
+async function generateForPost(supabase: SupabaseClient, post: PostPendingCopy) {
+  if (post.media_type === "video") {
+    const videoBuffer = await downloadMedia(supabase, post.media_url);
+    return generateCopyVariations({
+      mode: "video",
+      postType: post.post_type,
+      trackName: post.track_name,
+      additionalContext: post.source_fact,
+      videoBuffer,
+      filename: post.media_url,
+    });
+  }
+
+  return generateCopyVariations({
+    mode: "text",
+    postType: post.post_type,
+    fact: post.source_fact!,
+    trackName: post.track_name,
+  });
+}
+
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -49,24 +81,18 @@ export async function GET(request: Request) {
 
   let generated = 0;
   for (const post of posts) {
-    if (!post.source_fact) {
-      console.error("Post pendente sem source_fact, não é possível gerar copy:", post.id);
+    if (post.media_type === "image" && !post.source_fact) {
+      console.error("Imagem pendente sem source_fact, não é possível gerar copy:", post.id);
       await recordCopyGenerationError(
         supabase,
         post.id,
-        "Post sem fato de origem (source_fact vazio)."
+        "Imagem sem contexto (source_fact vazio)."
       );
       continue;
     }
 
     try {
-      const variations = await generateCopyVariations({
-        postType: post.post_type,
-        fact: post.source_fact,
-        trackName: post.track_name,
-        artistName: post.artist?.name ?? null,
-        artistHandle: post.artist?.handle ?? null,
-      });
+      const variations = await generateForPost(supabase, post);
 
       const { error } = await supabase
         .from("posts")
