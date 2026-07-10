@@ -18,7 +18,6 @@ export interface PostReportInput {
   published_at: string | null;
   post_url: string | null;
   created_at: string;
-  artist: { name: string } | null;
   social_account: { display_name: string } | null;
   metrics: {
     likes: number | null;
@@ -32,7 +31,6 @@ const HEADERS = [
   "status",
   "tipo",
   "origem",
-  "artista",
   "conta",
   "manchete",
   "legenda",
@@ -56,7 +54,6 @@ export function buildPostsReportRows(posts: PostReportInput[]): {
       POST_STATUS_LABELS[post.status],
       POST_TYPE_LABELS[post.post_type],
       post.content_source,
-      post.artist?.name ?? null,
       post.social_account?.display_name ?? null,
       post.headline,
       post.caption,
