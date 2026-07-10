@@ -4,7 +4,6 @@ import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { createPost, updatePost, type PostFormState } from "@/lib/posts/actions";
-import type { Artist } from "@/lib/types/artist";
 import {
   POST_TEMPLATES,
   POST_TYPE_LABELS,
@@ -21,14 +20,12 @@ const initialState: PostFormState = undefined;
 export function PostFormDialog({
   mode,
   post,
-  artists,
   socialAccounts,
   triggerLabel,
   triggerVariant = "default",
 }: {
   mode: "create" | "edit";
   post?: PostWithRelations;
-  artists: Artist[];
   socialAccounts: SocialAccount[];
   triggerLabel: string;
   triggerVariant?: "default" | "outline" | "secondary" | "ghost";
@@ -71,28 +68,6 @@ export function PostFormDialog({
               {mode === "edit" && post && (
                 <input type="hidden" name="post_id" value={post.id} />
               )}
-
-              <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="artist_id"
-                  className="text-sm text-muted-foreground"
-                >
-                  Artista (opcional)
-                </label>
-                <select
-                  id="artist_id"
-                  name="artist_id"
-                  defaultValue={post?.artist_id ?? ""}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                >
-                  <option value="">Nenhum</option>
-                  {artists.map((artist) => (
-                    <option key={artist.id} value={artist.id}>
-                      {artist.name} ({artist.handle})
-                    </option>
-                  ))}
-                </select>
-              </div>
 
               <div className="flex flex-col gap-1.5">
                 <label

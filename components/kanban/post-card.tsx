@@ -7,7 +7,6 @@ import {
   selectCopyVariation,
   submitForApproval,
 } from "@/lib/posts/actions";
-import type { Artist } from "@/lib/types/artist";
 import { POST_TYPE_LABELS, type PostWithRelations } from "@/lib/types/post";
 import type { Role } from "@/lib/types/profile";
 import {
@@ -74,13 +73,11 @@ export function PostCard({
   post,
   currentUserId,
   role,
-  artists,
   socialAccounts,
 }: {
   post: PostWithRelations;
   currentUserId: string;
   role: Role;
-  artists: Artist[];
   socialAccounts: SocialAccount[];
 }) {
   return (
@@ -158,7 +155,6 @@ export function PostCard({
               ] ?? post.social_account.network
             } — ${post.social_account.display_name}`
           : "Conta social não vinculada"}
-        {post.artist && ` · ${post.artist.name} (${post.artist.handle})`}
       </p>
 
       {post.post_url && (
@@ -209,7 +205,6 @@ export function PostCard({
           <PostFormDialog
             mode="edit"
             post={post}
-            artists={artists}
             socialAccounts={socialAccounts}
             triggerLabel="Editar"
             triggerVariant="outline"
