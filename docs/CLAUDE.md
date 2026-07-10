@@ -4,13 +4,25 @@ Instruções para qualquer sessão do Claude Code trabalhando neste repositório
 
 ## Visão do produto
 
-Painel web interno que automatiza o pipeline de postagem da Puzzle Records: a equipe deposita mídia + fato numa pasta do Google Drive → a OpenAI gera manchete e legenda no estilo da casa → o sistema renderiza a arte "news card" → o post entra numa fila de aprovação com preview → aprovado, é publicado (Instagram primeiro, depois TikTok/YouTube/Facebook) via Zernio no horário agendado → as métricas voltam para um dashboard.
+Painel web interno que automatiza o pipeline de postagem da Puzzle Records: conteúdo entra por **dois canais** — a pasta do Google Drive pessoal do usuário (fluxo principal, monitorado por cron) ou **upload direto no painel** (para quando o usuário quer postar algo imediato, sem esperar o cron do Drive) — ver decisão de 10/07/2026 abaixo → para **vídeo**, a IA analisa o próprio conteúdo (frames + transcrição de áudio) e escreve a legenda sozinha; para **imagem**, o contexto (digitado no painel, ou vindo do `.json` do Drive) alimenta a IA, que escreve a legenda com base nele → o sistema renderiza a arte "news card" (hoje só para imagem — vídeo segue o débito conhecido do M5 até o M14) → o post entra numa fila de aprovação com preview → aprovado, é publicado (Instagram primeiro, depois TikTok/YouTube/Facebook) via Zernio no horário agendado → as métricas voltam para um dashboard.
 
-Objetivo de negócio: crescer o @puzzlerecordss replicando o modelo do @lovefunkprodutora (perfil de mídia, não institucional).
+Objetivo de negócio: crescer o @puzzlerecordss replicando o modelo do @lovefunkprodutora (perfil de mídia, não institucional). **Conta única** — não há cadastro de artistas nem multi-conta; todo o conteúdo é institucional da Puzzle Records (ver decisão de 10/07/2026 abaixo).
 
 ## Regra de ouro
 
 **Nenhum post é publicado sem aprovação humana.** Nunca implemente um caminho que publique direto sem passar pela fila de aprovação, mesmo como atalho de teste ou feature flag.
+
+## Conta única + Drive simplificado + upload direto + IA multimodal (decisão de sessão de 10/07/2026)
+
+Pivô de arquitetura decidido pelo Victor, a ser implementado como pré-requisito do M11 (ver `PLAN.md`) — **ajusta** o modelo de dados e o fluxo de ingestão descritos nos milestones M2–M4/M8 já implementados:
+
+- **Conta única**: só existe `@puzzlerecordss`. Não há cadastro de artistas — os posts são conteúdo institucional da Puzzle Records, não atribuídos a um artista específico. O modelo de dados de `artists` (M2) e a anti-repetição por artista do acervo (M8, `ACERVO_ARTIST_MIN_GAP_DAYS`) saem do sistema.
+- **Google Drive continua sendo o canal principal de ingestão** (M3), mas simplificado: é a pasta pessoal do usuário no Drive (Service Account continua necessária para o cron ler a pasta), e o `.json` de metadado não precisa mais casar artista/conta social (conta é sempre a única cadastrada) — só carrega o contexto (`fato`) e o tipo do post. Para vídeo, o `fato` passa a ser opcional: se ausente, a IA analisa o próprio conteúdo do vídeo em vez de depender do texto.
+- **Upload direto no painel** (estende o fluxo manual que já existe desde o M2/`PostFormDialog` e o M8/acervo) continua existindo **como segundo canal**, para quando o usuário quer publicar algo imediato sem esperar o cron do Drive (que roda a cada 5 min):
+  - **Vídeo**: o usuário só sobe o arquivo — a IA analisa o próprio conteúdo (frames extraídos via FFmpeg + transcrição de áudio via Whisper, enviados a um prompt de visão do GPT-4o) e escreve a legenda sozinha, sem exigir texto de contexto.
+  - **Imagem**: o usuário digita o contexto no upload; a IA escreve a legenda com base nesse texto — mesmo papel do `fato` do Drive, só que digitado direto no painel.
+- **Análise de vídeo vale para os dois canais**: um vídeo solto no Drive sem `fato` no `.json` passa pelo mesmo pipeline de frames+transcrição+visão que um vídeo subido direto no painel.
+- **Prompts fundamentados em boas práticas de copywriting e social media**: `lib/openai/prompts.ts` deve ser reescrito incorporando as diretrizes das skills do Claude Code `copywriting` e `social` (usadas durante o desenvolvimento para fundamentar a reescrita do prompt). Importante: isso é conhecimento transcrito para o system prompt fixo usado pela chamada da API da OpenAI — **skills não são uma dependência de runtime do app**, não existe integração ao vivo com o sistema de skills do Claude Code.
 
 ## Workflow de git
 
@@ -26,7 +38,7 @@ Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, Supabase (Postgres + Auth +
 
 Sem serviço de e-mail no momento (Resend foi removido em 09/07/2026 — ver decisão abaixo) — alertas de SLA/desconexão/relatório semanal ficam pendentes de um novo canal, a decidir no M11 (`PLAN.md`).
 
-Motor de templates de vídeo (roadmap, M14): Remotion + Whisper + FFmpeg, worker fora da Vercel (Railway). Ver seção de decisões abaixo.
+Motor de templates de vídeo (roadmap, M14): Remotion + Whisper + FFmpeg, worker fora da Vercel (Railway). Ver seção de decisões abaixo. **FFmpeg + Whisper foram puxados para mais cedo** (M4/M11) para alimentar a análise multimodal de vídeo na geração de legenda — não esperam o M14, que continua sendo especificamente o motor de *templates renderizados* de vídeo.
 
 ## Decisões de arquitetura já tomadas
 
@@ -50,17 +62,16 @@ Motor de templates de vídeo (roadmap, M14): Remotion + Whisper + FFmpeg, worker
 Fonte completa: `../GUIA-DE-ESTILO-POSTS-PUZZLE.md`. Regras que a geração de IA e os templates devem sempre respeitar:
 
 1. **Sem hashtags** — a manchete da arte carrega a informação, não a legenda.
-2. Lançamentos sempre com **@mention do artista** + música taggeada.
+2. **@mention/música deixaram de ser obrigatórios** (não há mais cadastro de artista — ver decisão de 10/07/2026 acima). Quando o post menciona um artista de terceiros no conteúdo (notícia/fofoca do cenário funk), citar o nome/@ dele no texto se for do conhecimento da equipe/IA — mas é uma menção editorial pontual, não um campo estruturado do sistema.
 3. Manchete carrega a informação; legenda carrega o engajamento (pergunta ou opinião de torcida).
 4. Emojis funcionais, 2–4 por bloco — nunca em toda palavra.
 5. Cada post escolhe: Template A ou B + fórmula de manchete + padrão de legenda (viral × lançamento).
 
 ## Personas
 
-- **Equipe de conteúdo** — sobe mídia e fatos no Drive, ajusta manchetes/legendas na fila.
+- **Equipe de conteúdo** — sobe vídeo/imagem pela pasta do Drive (fluxo principal) ou direto no painel (post imediato); contexto vem do `.json` do Drive ou é digitado no painel para imagem, vídeo a IA analisa sozinha; ajusta manchetes/legendas na fila.
 - **Aprovador** (gestor/dono) — aprova/edita/rejeita cada post; SLA de aprovação de 4h.
-- **Admin (Victor)** — configura contas, templates, prompts de IA e integrações.
-- **Artista** — não usa o sistema; é taggeado e orientado a comentar.
+- **Admin (Victor)** — configura a conta social, templates, prompts de IA e integrações.
 
 ## Riscos a ter em mente durante o desenvolvimento
 

@@ -30,6 +30,8 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 ## M2 — Modelo de dados + Kanban manual ✅ (código pronto, checklist manual pendente)
 
+> ⚠️ **Revisado em 10/07/2026**: o CRUD de artistas descrito abaixo (`artists`, `/admin/artistas`) será removido — conta única, sem cadastro de artista. Ver [Pós-M10 — Pivô de arquitetura](#pós-m10--pivô-de-arquitetura-conta-única--drive-simplificado--upload-direto--ia-multimodal-10072026). Registro histórico mantido como foi implementado originalmente.
+
 **Objetivo**: validar o fluxo de aprovação antes de plugar IA e integrações.
 
 - [x] Tabelas: `artists`, `social_accounts`, `posts` — com RLS por papel (`equipe_conteudo` só cria/edita os próprios posts em rascunho/rejeitado; `aprovador` só decide posts pendentes; `admin` acesso total). Bucket privado `posts-media` no Supabase Storage.
@@ -42,6 +44,8 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 ## M3 — Ingestão do Google Drive ✅ (código pronto, checklist manual pendente)
 
+> ⚠️ **Revisado em 10/07/2026**: o Drive continua como canal principal de ingestão (não foi removido), mas o `.json` de metadado é simplificado — sem match de artista/conta social (conta única), e `fato` vira opcional para vídeo (a IA analisa o próprio conteúdo quando ausente). Upload direto no painel passa a existir como segundo canal, para post imediato. Ver [Pós-M10 — Pivô de arquitetura](#pós-m10--pivô-de-arquitetura-conta-única--drive-simplificado--upload-direto--ia-multimodal-10072026). Registro histórico mantido como foi implementado originalmente.
+
 **Objetivo**: conteúdo entra no sistema sem intervenção manual.
 
 - [x] Monitoramento da pasta acordada via Google Drive API — cron da Vercel a cada 5 minutos (`app/api/cron/drive-ingest`), autenticado via Service Account (`lib/drive/client.ts`).
@@ -51,6 +55,8 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 **Pronto para avançar quando**: soltar um arquivo na pasta do Drive cria um post pendente no painel em poucos minutos. *(Código commitado na `main`; falta rodar o checklist manual de `docs/plans/2026-07-03-m3-drive-ingestion.md` — Task 13 — contra uma pasta real do Drive e um projeto Supabase linkado: aplicar a migration `0003_drive_ingestion.sql`, configurar a Service Account e o `CRON_SECRET`, e soltar arquivos reais na pasta.)*
 
 ## M4 — Geração de manchete/legenda via OpenAI ✅ (código pronto, checklist manual pendente)
+
+> ⚠️ **Revisado em 10/07/2026**: o gatilho por cron a partir do Drive descrito abaixo continua existindo, e passa a valer também para o upload direto do painel (segundo canal); a IA passa a analisar o próprio vídeo (frames + transcrição) quando não há `source_fact`/contexto, em vez de depender só de texto, e o prompt será reescrito com base em boas práticas de copywriting/social media. Ver [Pós-M10 — Pivô de arquitetura](#pós-m10--pivô-de-arquitetura-conta-única--drive-simplificado--upload-direto--ia-multimodal-10072026). Registro histórico mantido como foi implementado originalmente.
 
 **Objetivo**: IA escreve no tom da casa.
 
@@ -134,6 +140,8 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 ## M8 — Fila do acervo ✅ (código pronto, checklist manual pendente)
 
+> ⚠️ **Revisado em 10/07/2026**: a anti-repetição por artista (`ACERVO_ARTIST_MIN_GAP_DAYS`, citada abaixo) cai junto com a remoção do modelo de artistas — sem substituto definido ainda (avaliar se faz sentido anti-repetir por mídia/tema, ou remover sem substituto). Ver [Pós-M10 — Pivô de arquitetura](#pós-m10--pivô-de-arquitetura-conta-única--drive-simplificado--upload-direto--ia-multimodal-10072026). Registro histórico mantido como foi implementado originalmente.
+
 **Objetivo**: manter o perfil ativo com o conteúdo já produzido.
 
 - [x] Migration `supabase/migrations/0009_acervo.sql`: `posts.content_source` (`'drive' | 'acervo'`, default `'drive'`, não quebra posts existentes) e `social_accounts.acervo_daily_slots` (`time[]`, horários-alvo configurados pelo admin, só relevante para Instagram).
@@ -201,16 +209,40 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 **Lacuna aberta**: SLA de aprovação vencido (4h) e conta social desconectada não têm mais nenhum canal ativo de alerta — hoje só aparecem passivamente no dashboard. `docs/CLAUDE.md` mantém a regra de "nunca alertar em silêncio"; decidir o canal de reposição é a primeira tarefa do M11 (ver abaixo).
 
+## Pós-M10 — Pivô de arquitetura: conta única + Drive simplificado + upload direto + IA multimodal (10/07/2026)
+
+**Objetivo**: simplificar o modelo de dados e enriquecer a geração de copy antes de ir para produção (M11), conforme decisão do Victor: só existe a conta `@puzzlerecordss`, sem cadastro de artistas; conteúdo continua entrando pelo Drive pessoal do usuário (fluxo principal) e ganha um segundo canal de upload direto no painel (para post imediato); a IA passa a gerar a legenda a partir do próprio conteúdo (vídeo) ou de contexto dado pelo usuário (imagem), em vez de depender só do `fato` estruturado do `.json` do Drive. Decisões completas em [docs/CLAUDE.md](docs/CLAUDE.md#conta-única--drive-simplificado--upload-direto--ia-multimodal-decisão-de-sessão-de-10072026).
+
+**Decisões**:
+- Google Drive (M3) **continua** como canal principal de ingestão — nada é removido, só simplificado: o `.json` de metadado não precisa mais de `artista`/`conta_social` (conta é sempre a única cadastrada); `fato` vira opcional para vídeo (a IA analisa o próprio conteúdo quando ausente) e continua obrigatório para imagem.
+- Artistas (M2) removidos do modelo — tabela `artists`, `/admin/artistas`, `artist_id` em `posts`, e a anti-repetição por artista do acervo (M8, `ACERVO_ARTIST_MIN_GAP_DAYS`) saem do sistema. `social_accounts` passa a ter uma única linha (a conta Puzzle Records).
+- Upload direto no painel (estendendo o fluxo já existente de `PostFormDialog`/acervo do M2/M8) passa a existir como **segundo canal**, ao lado do Drive, para quando o usuário quer publicar algo imediato sem esperar o cron: o usuário sobe a mídia e, para imagem, digita o contexto; para vídeo, não precisa digitar nada — a IA analisa o conteúdo.
+- Análise multimodal de vídeo: pull-forward de FFmpeg (extração de frames) e Whisper (transcrição de áudio) do M14 para uso na geração de copy (M4) — frames + transcrição alimentam um prompt de visão (GPT-4o) que escreve a legenda sem exigir contexto manual. Vale para vídeo vindo tanto do Drive (sem `fato`) quanto do upload direto.
+- Prompts de geração de copy (`lib/openai/prompts.ts`) reescritos com base em boas práticas de copywriting e social media (skills do Claude Code `copywriting`/`social`, usadas nesta sessão para fundamentar a reescrita — conhecimento incorporado ao prompt fixo, não uma integração em runtime).
+
+**Trabalho de implementação necessário** (retrabalho sobre M2–M4/M8, antes de fechar o M11):
+- [ ] Migration removendo/desativando `artists` e `artist_id` — decidir na implementação se a coluna é dropada ou só deixada nula/sem uso.
+- [ ] Remover `/admin/artistas` e toda referência a artista no Kanban/acervo/calendário/analytics/CSV.
+- [ ] Simplificar `lib/drive/metadata.ts`/`matchArtistAndAccount.ts`: remover campos `artista`/`conta_social` do `.json` (conta é sempre a única cadastrada), tornar `fato` opcional para `media_type = 'video'`.
+- [ ] Novo formulário de "Novo post" com upload direto (segundo canal) com dois modos: vídeo (sem campo de contexto, dispara análise automática) e imagem (campo de contexto obrigatório).
+- [ ] Pipeline de análise de vídeo: extração de frames (FFmpeg) + transcrição (Whisper) + prompt de visão (GPT-4o) → legenda; usado tanto pelo cron `generate-copy` (vídeo do Drive sem `fato`) quanto pelo upload direto; mesmo padrão de erro nunca-silencioso dos milestones anteriores (`copy_generation_error`).
+- [ ] `lib/openai/prompts.ts` reescrito com as diretrizes de copywriting/social media.
+- [ ] `lib/acervo/scheduler.ts`: remover a anti-repetição por artista (`ACERVO_ARTIST_MIN_GAP_DAYS`) — avaliar se precisa de um substituto (ex.: não repetir a mesma mídia) ou se cai sem substituto.
+- [ ] Atualizar `GUIA-DE-ESTILO-POSTS-PUZZLE.md` — a regra de `@mention` obrigatório de artista deixa de ser padrão (vira menção editorial pontual, ver `docs/CLAUDE.md`).
+
+**Onde isso entra no roadmap**: pré-requisito do M11 — faz mais sentido simplificar o modelo antes do primeiro go-live real do que produtizar com o modelo antigo e depois migrar dados reais.
+
 ---
 
 ## M11 — Produção (semana 1) — caminho crítico
 
 **Objetivo**: sair do código pronto-mas-nunca-rodado para um ambiente de produção real. O gargalo agora é operacional, não código — dez milestones foram implementados e revisados sem nunca tocar um projeto Supabase real.
 
-- [ ] Criar projeto Supabase real, aplicar as migrations `0001`–`0010` em ordem, criar o primeiro usuário admin.
+- [ ] **Implementar o pivô de arquitetura** descrito em [Pós-M10 — Pivô de arquitetura](#pós-m10--pivô-de-arquitetura-conta-única--drive-simplificado--upload-direto--ia-multimodal-10072026) — conta única, Drive simplificado, upload direto como segundo canal, IA multimodal — antes de rodar os checklists abaixo (checklists antigos de M2/M4/M8 ficam obsoletos nos pontos que dependiam de artista; o de M3 precisa ser refeito contra o `.json` simplificado).
+- [ ] Criar projeto Supabase real, aplicar as migrations em ordem (incluindo a nova migration do pivô), criar o primeiro usuário admin.
 - [ ] Deploy na Vercel (`docs/DEPLOY.md`) + configurar as env vars restantes + registrar os crons (`vercel.json` já reflete a remoção do Resend).
-- [ ] Chave `OPENAI_API_KEY` real; Service Account do Google Drive + pasta compartilhada com o e-mail `client_email` (papel Editor). Para testar a geração de copy sem custo antes de comprar crédito OpenAI, dá pra usar `OPENROUTER_API_KEY` (modelos gratuitos, ver `.env.example` e `docs/CLAUDE.md`) — troca automática, sem mexer em código.
-- [ ] Rodar em ordem os checklists manuais acumulados de M1 a M10 (ficam em `docs/plans/`) — é a validação de que o código escrito de fato funciona contra infraestrutura real.
+- [ ] Chave `OPENAI_API_KEY` real (precisa suportar visão para a análise de vídeo/imagem — GPT-4o). Para testar a geração de copy sem custo antes de comprar crédito OpenAI, dá pra usar `OPENROUTER_API_KEY` (modelos gratuitos, ver `.env.example` e `docs/CLAUDE.md`) — troca automática, sem mexer em código. Service Account do Google Drive + pasta pessoal do usuário compartilhada (papel Editor) continuam necessárias — ver passo a passo em `docs/DEPLOY.md`.
+- [ ] Rodar em ordem os checklists manuais acumulados de M1, M5–M7, M9–M10 (ficam em `docs/plans/`) — os de M2/M3/M4/M8 precisam ser refeitos contra o fluxo pós-pivô, não contra o registro histórico original.
 - [ ] Decidir o canal de notificação que substitui o Resend (recolocar Resend, ou outro canal — ex.: centro de notificações in-app, Slack/webhook) e implementá-lo. Sem isso, alertas de SLA/desconexão e relatório semanal continuam sem sair.
 - [x] **Sessão de testes 09/07/2026 — primeira rodada contra Supabase real.** Conectado projeto real (`dtfnxurjemdabqukgqzc`), migrations `0001`–`0010` aplicadas, admin criado, testado ponta a ponta via Playwright + chamadas diretas às rotas de cron. Achado e corrigido **1 bug crítico de produção**: `proxy.ts` (middleware) tinha o matcher cobrindo `/api/cron/**`, e como as chamadas de cron nunca têm sessão de usuário Supabase (nem as da própria Vercel — só `Authorization: Bearer <CRON_SECRET>`), o gate "sem usuário → 401" do middleware bloqueava toda chamada de cron **antes mesmo** de a rota checar o `CRON_SECRET`. Na prática, nenhum dos 6 crons registrados em `vercel.json` teria conseguido rodar em produção, apesar de terem sido escritos, revisados e "mergeados" nos milestones M3–M10 — o gap só apareceu ao testar uma chamada HTTP real e não autenticada por sessão, o que nenhuma das revisões anteriores fez. Corrigido excluindo `api/cron` do matcher (rotas de cron continuam se autenticando sozinhas via `CRON_SECRET`, fail-closed, como já era). Validado depois da correção: `generate-copy` (copy real gerada via OpenRouter, `openai/gpt-oss-20b:free`, seguindo as fórmulas do guia de estilo), `generate-art` (sucesso com mídia real via Satori; falha tratada e visível no Kanban com mídia inexistente), fluxo completo de aprovação (enviar → aprovar, dashboard refletindo contadores corretos), `publish-scheduled` (falha correta e não-silenciosa por falta de `zernio_account_id`, esperado até o M12), export CSV, `/calendario`, `/acervo`, `/admin/**` — sem nenhum outro erro de página ou de console. Dados de teste (artista/conta/posts/mídia) criados e removidos ao final da sessão.
 
