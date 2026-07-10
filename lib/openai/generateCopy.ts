@@ -1,17 +1,12 @@
 import { createOpenAIClient, getAiProvider } from "./client";
-import { buildUserPrompt, SYSTEM_PROMPT } from "./prompts";
+import { buildTextUserPrompt, buildVideoUserContent, SYSTEM_PROMPT } from "./prompts";
+import { analyzeVideo } from "./videoAnalysis";
 import type { CopyVariation, PostType } from "@/lib/types/post";
 
 const OPENAI_ROUTINE_MODEL = "gpt-4o-mini";
 const OPENAI_LAUNCH_MODEL = "gpt-4o";
 
 // Modelos gratuitos do OpenRouter (só para teste, ver lib/openai/client.ts).
-// Overridáveis por env var caso o modelo padrão saia do catálogo grátis —
-// o catálogo muda com frequência, e modelos grátis populares (ex.:
-// meta-llama/llama-3.3-70b-instruct, qwen3-next-80b) ficam sujeitos a
-// rate-limit 429 do provedor upstream sob carga, mesmo com chave válida.
-// "openai/gpt-oss-20b:free" validado manualmente em 09/07/2026 (ver M11 em
-// PLAN.md) — sem garantia de disponibilidade permanente.
 const OPENROUTER_ROUTINE_MODEL =
   process.env.OPENROUTER_MODEL_ROUTINE ?? "openai/gpt-oss-20b:free";
 const OPENROUTER_LAUNCH_MODEL =
@@ -52,35 +47,51 @@ function parseVariations(raw: string): CopyVariation[] {
   });
 }
 
+export type GenerateCopyInput =
+  | { mode: "text"; postType: PostType; fact: string; trackName: string | null }
+  | {
+      mode: "video";
+      postType: PostType;
+      trackName: string | null;
+      additionalContext: string | null;
+      videoBuffer: Buffer;
+      filename: string;
+    };
+
 /**
- * Gera 2-3 variações de manchete/legenda pro post. Lança CopyGenerationError
- * (ou erro do SDK da OpenAI) em caso de falha — quem chama decide como
- * registrar (ver app/api/cron/generate-copy/route.ts), nunca falha em
- * silêncio.
+ * Gera 2-3 variações de manchete/legenda pro post. Modo "text" usa o
+ * contexto digitado/vindo do Drive; modo "video" analisa o próprio vídeo
+ * (frames + transcrição, ver videoAnalysis.ts) — não depende de texto de
+ * contexto, mas aproveita `additionalContext` se presente. Lança
+ * CopyGenerationError (ou erro do SDK/ffmpeg) em caso de falha — quem
+ * chama decide como registrar, nunca falha em silêncio.
  */
-export async function generateCopyVariations(input: {
-  postType: PostType;
-  fact: string;
-  trackName: string | null;
-  artistName: string | null;
-  artistHandle: string | null;
-}): Promise<CopyVariation[]> {
+export async function generateCopyVariations(
+  input: GenerateCopyInput
+): Promise<CopyVariation[]> {
   const client = createOpenAIClient();
   const model = modelForPostType(input.postType);
-  // Nem todo modelo gratuito do OpenRouter suporta JSON mode — o
-  // SYSTEM_PROMPT já exige JSON explicitamente, então response_format fica
-  // só como reforço extra quando o provedor é a OpenAI de verdade.
   const responseFormat =
     getAiProvider() === "openai"
       ? ({ response_format: { type: "json_object" as const } } as const)
       : {};
+
+  const userContent =
+    input.mode === "text"
+      ? buildTextUserPrompt(input)
+      : buildVideoUserContent({
+          postType: input.postType,
+          trackName: input.trackName,
+          additionalContext: input.additionalContext,
+          ...(await analyzeVideo(input.videoBuffer, input.filename)),
+        });
 
   const completion = await client.chat.completions.create({
     model,
     ...responseFormat,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: buildUserPrompt(input) },
+      { role: "user", content: userContent },
     ],
   });
 
