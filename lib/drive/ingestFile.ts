@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { drive_v3 } from "googleapis";
 
 import { InvalidMetadataError, parseMetadata } from "./metadata";
-import { matchArtistAndAccount } from "./matchArtistAndAccount";
+import { resolveSocialAccount } from "./resolveSocialAccount";
 import type { FilePair } from "./pairFiles";
 
 function mediaTypeFromMimeType(mimeType: string): "image" | "video" {
@@ -77,9 +77,11 @@ export async function ingestFilePair(
     return;
   }
 
+  const mediaType = mediaTypeFromMimeType(pair.media.mimeType);
+
   let metadata;
   try {
-    metadata = parseMetadata(metadataText);
+    metadata = parseMetadata(metadataText, mediaType);
   } catch (err) {
     const message =
       err instanceof InvalidMetadataError ? err.message : "Metadado inválido.";
@@ -106,24 +108,19 @@ export async function ingestFilePair(
     return;
   }
 
-  const match = await matchArtistAndAccount(
-    supabase,
-    metadata.artista,
-    metadata.contaSocial
-  );
+  const resolution = await resolveSocialAccount(supabase);
 
   const { data: post, error: insertError } = await supabase
     .from("posts")
     .insert({
-      artist_id: match.artistId,
-      social_account_id: match.socialAccountId,
+      social_account_id: resolution.socialAccountId,
       post_type: metadata.tipo,
       source_fact: metadata.fato,
       track_name: metadata.musica,
       media_url: storagePath,
-      media_type: mediaTypeFromMimeType(pair.media.mimeType),
+      media_type: mediaType,
       status: "pendente",
-      ingestion_warning: match.warning,
+      ingestion_warning: resolution.warning,
     })
     .select("id")
     .single();
