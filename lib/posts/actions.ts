@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
+import { generateCopyVariations, CopyGenerationError } from "@/lib/openai/generateCopy";
 import { renderArt, ArtRenderError } from "@/lib/renderer/renderArt";
 import { createClient } from "@/lib/supabase/server";
 import { mediaTypeFromFile, uploadMedia } from "@/lib/posts/media";
@@ -78,6 +79,102 @@ export async function createPost(
     media_url: mediaPath,
     media_type: mediaTypeFromFile(mediaFile),
     status: "rascunho",
+    created_by: profile.id,
+  });
+
+  if (error) {
+    return { error: "Não foi possível salvar o post." };
+  }
+
+  revalidatePostPages();
+  return { success: true };
+}
+
+/**
+ * Caminho "imediato" do painel: upload direto de mídia (sem passar pelo
+ * Drive) com legenda gerada pela IA de forma síncrona, dentro da própria
+ * action. Não confundir com `createPost` (formulário manual do M2, sem IA).
+ */
+export async function createPostWithAI(
+  _prevState: PostFormState,
+  formData: FormData
+): Promise<PostFormState> {
+  const profile = await getCurrentProfile();
+  if (
+    !profile ||
+    (profile.role !== "equipe_conteudo" && profile.role !== "admin")
+  ) {
+    return { error: "Você não tem permissão para criar posts." };
+  }
+
+  const socialAccountId = String(formData.get("social_account_id") ?? "");
+  const postType = String(formData.get("post_type") ?? "") as PostType;
+  const template = String(formData.get("template") ?? "") as PostTemplate;
+  const context = String(formData.get("context") ?? "").trim();
+
+  if (!socialAccountId || !postType || !template) {
+    return { error: "Preencha todos os campos obrigatórios." };
+  }
+
+  const mediaFile = formData.get("media") as File | null;
+  if (!mediaFile || mediaFile.size === 0) {
+    return { error: "Selecione um arquivo de mídia." };
+  }
+
+  const mediaType = mediaTypeFromFile(mediaFile);
+  if (mediaType === "image" && !context) {
+    return { error: "Digite o contexto da imagem para a IA escrever a legenda." };
+  }
+
+  let mediaPath: string;
+  let mediaBuffer: Buffer;
+  try {
+    mediaBuffer = Buffer.from(await mediaFile.arrayBuffer());
+    mediaPath = await uploadMedia(mediaFile);
+  } catch {
+    return { error: "Falha ao enviar o arquivo de mídia. Tente novamente." };
+  }
+
+  let variations: CopyVariation[];
+  try {
+    variations =
+      mediaType === "video"
+        ? await generateCopyVariations({
+            mode: "video",
+            postType,
+            trackName: null,
+            additionalContext: context || null,
+            videoBuffer: mediaBuffer,
+            filename: mediaFile.name,
+          })
+        : await generateCopyVariations({
+            mode: "text",
+            postType,
+            fact: context,
+            trackName: null,
+          });
+  } catch (err) {
+    const message =
+      err instanceof CopyGenerationError
+        ? err.message
+        : "A IA não conseguiu gerar a legenda. Tente novamente.";
+    console.error("Falha ao gerar copy no upload direto:", err);
+    return { error: message };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("posts").insert({
+    social_account_id: socialAccountId,
+    template,
+    post_type: postType,
+    headline: variations[0].headline,
+    caption: variations[0].caption,
+    copy_variations: variations,
+    media_url: mediaPath,
+    media_type: mediaType,
+    source_fact: context || null,
+    status: "rascunho",
+    content_source: "painel",
     created_by: profile.id,
   });
 
