@@ -4,16 +4,13 @@ import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { createAcervoPost, type AcervoFormState } from "@/lib/acervo/actions";
-import type { Artist } from "@/lib/types/artist";
 import type { SocialAccount } from "@/lib/types/social-account";
 
 const initialState: AcervoFormState = undefined;
 
 export function AcervoFormDialog({
-  artists,
   socialAccounts,
 }: {
-  artists: Artist[];
   socialAccounts: SocialAccount[];
 }) {
   const [open, setOpen] = useState(false);
@@ -48,28 +45,6 @@ export function AcervoFormDialog({
             </h2>
 
             <form action={formAction} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="artist_id"
-                  className="text-sm text-muted-foreground"
-                >
-                  Artista (opcional)
-                </label>
-                <select
-                  id="artist_id"
-                  name="artist_id"
-                  defaultValue=""
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                >
-                  <option value="">Nenhum</option>
-                  {artists.map((artist) => (
-                    <option key={artist.id} value={artist.id}>
-                      {artist.name} ({artist.handle})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="social_account_id"

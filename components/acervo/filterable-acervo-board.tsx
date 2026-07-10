@@ -9,17 +9,14 @@ import {
   matchesPostFilters,
   type PostFilters,
 } from "@/lib/posts/filterPosts";
-import type { Artist } from "@/lib/types/artist";
 import type { PostWithRelations } from "@/lib/types/post";
 import type { SocialAccount } from "@/lib/types/social-account";
 
 export function FilterableAcervoBoard({
   posts,
-  artists,
   socialAccounts,
 }: {
   posts: PostWithRelations[];
-  artists: Artist[];
   socialAccounts: SocialAccount[];
 }) {
   const [filters, setFilters] = useState<PostFilters>(EMPTY_POST_FILTERS);
@@ -30,7 +27,6 @@ export function FilterableAcervoBoard({
       <BoardFilters
         filters={filters}
         onChange={setFilters}
-        artists={artists}
         socialAccounts={socialAccounts}
         showContentSource={false}
         showPostType={false}
