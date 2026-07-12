@@ -91,6 +91,23 @@ export async function createPost(
 }
 
 /**
+ * Best-effort: remove um arquivo já enviado ao Storage quando o resto do
+ * pipeline (IA ou insert) falha depois do upload, pra não acumular objeto
+ * órfão a cada tentativa. Nunca deve mascarar o erro original — só loga.
+ */
+async function cleanupOrphanedMedia(mediaPath: string) {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.storage.from("posts-media").remove([mediaPath]);
+    if (error) {
+      console.error("Falha ao limpar mídia órfã no Storage:", mediaPath, error);
+    }
+  } catch (err) {
+    console.error("Falha ao limpar mídia órfã no Storage:", mediaPath, err);
+  }
+}
+
+/**
  * Caminho "imediato" do painel: upload direto de mídia (sem passar pelo
  * Drive) com legenda gerada pela IA de forma síncrona, dentro da própria
  * action. Não confundir com `createPost` (formulário manual do M2, sem IA).
@@ -167,6 +184,7 @@ export async function createPostWithAI(
         ? err.message
         : "A IA não conseguiu gerar a legenda. Tente novamente.";
     console.error("Falha ao gerar copy no upload direto:", err);
+    await cleanupOrphanedMedia(mediaPath);
     return { error: message };
   }
 
@@ -192,6 +210,8 @@ export async function createPostWithAI(
   });
 
   if (error) {
+    console.error("Falha ao salvar post do upload direto:", error);
+    await cleanupOrphanedMedia(mediaPath);
     return { error: "Não foi possível salvar o post." };
   }
 

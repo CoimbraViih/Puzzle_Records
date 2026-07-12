@@ -6,6 +6,11 @@ import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { listPosts, listSocialAccounts } from "@/lib/posts/queries";
 
 export const dynamic = "force-dynamic";
+// Post rápido com vídeo (createPostWithAI) roda síncrono: extração de frames
+// via FFmpeg + transcrição Whisper + visão GPT-4o pode levar 20-60s — bem
+// acima do default de 10-15s da Vercel. A duração de uma Server Action é
+// regida pelo maxDuration da rota que a invoca (não tem export próprio).
+export const maxDuration = 300;
 
 export default async function ConteudoPage() {
   const profile = await getCurrentProfile();
