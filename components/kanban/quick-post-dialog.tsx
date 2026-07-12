@@ -91,30 +91,32 @@ export function QuickPostDialog({
               </div>
 
               <div className="flex gap-4">
-                <div className="flex flex-1 flex-col gap-1.5">
-                  <label
-                    htmlFor="quick_template"
-                    className="text-sm text-muted-foreground"
-                  >
-                    Template
-                  </label>
-                  <select
-                    id="quick_template"
-                    name="template"
-                    required
-                    defaultValue=""
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                  >
-                    <option value="" disabled>
-                      Selecione
-                    </option>
-                    {POST_TEMPLATES.map((template) => (
-                      <option key={template} value={template}>
-                        Template {template}
+                {!isVideo && (
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <label
+                      htmlFor="quick_template"
+                      className="text-sm text-muted-foreground"
+                    >
+                      Template
+                    </label>
+                    <select
+                      id="quick_template"
+                      name="template"
+                      required
+                      defaultValue=""
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    >
+                      <option value="" disabled>
+                        Selecione
                       </option>
-                    ))}
-                  </select>
-                </div>
+                      {POST_TEMPLATES.map((template) => (
+                        <option key={template} value={template}>
+                          Template {template}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="flex flex-1 flex-col gap-1.5">
                   <label
