@@ -8,6 +8,19 @@ import {
 import { listPostsPendingCopy, type PostPendingCopy } from "@/lib/posts/pendingCopy";
 import { createServiceClient } from "@/lib/supabase/service";
 
+// Vídeo (frames via ffmpeg + transcrição Whisper + visão GPT-4o) leva
+// 20-60s por post — sem isso, a função é derrubada no limite padrão da
+// Vercel (10-15s) antes de terminar, achado na revisão fresh-eyes
+// pós-merge de 12/07/2026 (ver PLAN.md).
+export const maxDuration = 300;
+
+// Processa no máximo 1 vídeo por execução: o loop abaixo é sequencial, e
+// 2-3 vídeos pendentes no mesmo ciclo excederiam o timeout mesmo com
+// maxDuration=300. Imagem (texto puro, rápido) não tem esse limite —
+// continua processando todas no mesmo ciclo. Vídeos além do limite ficam
+// pendentes pro próximo ciclo (5 min depois), sem gravar erro.
+const MAX_VIDEOS_PER_RUN = 1;
+
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
@@ -80,6 +93,7 @@ export async function GET(request: Request) {
   const posts = await listPostsPendingCopy(supabase);
 
   let generated = 0;
+  let videosProcessed = 0;
   for (const post of posts) {
     if (post.media_type === "image" && !post.source_fact) {
       console.error("Imagem pendente sem source_fact, não é possível gerar copy:", post.id);
@@ -89,6 +103,11 @@ export async function GET(request: Request) {
         "Imagem sem contexto (source_fact vazio)."
       );
       continue;
+    }
+
+    if (post.media_type === "video") {
+      if (videosProcessed >= MAX_VIDEOS_PER_RUN) continue;
+      videosProcessed += 1;
     }
 
     try {
