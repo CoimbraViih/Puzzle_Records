@@ -236,6 +236,19 @@ fix de acabamento em `docs/plans/2026-07-12-finalizar-pivo-conta-unica.md`).
 Falta só rodar a migration contra um projeto Supabase real — isso é
 trabalho do M11, não deste pivô.
 
+**Débito técnico conhecido** (achados da revisão final da branch, baixa
+prioridade, não bloqueia o M11): o cron `app/api/cron/generate-copy`
+processa vídeo pelo mesmo pipeline síncrono de FFmpeg+Whisper+GPT-4o do
+upload direto, mas sem `maxDuration` configurado — mesmo risco de timeout
+já corrigido pro "Post rápido" (`app/(dashboard)/conteudo/page.tsx`), só
+que aqui não foi corrigido (fora do escopo deste pivô, cron nunca foi
+tocado pelo plano de acabamento); mensagem de `copy_generation_error`
+genérica ("Falha ao gerar manchete/legenda via OpenAI") pra falhas que não
+vêm da OpenAI (ex.: `VideoAnalysisError` do ffmpeg) — causa real só
+aparece no log do servidor; vídeo acima de ~25MB estoura o limite do
+Whisper e cai silenciosamente pra legenda só com base nos frames (sem
+transcrição), sem log dedicado avisando que isso aconteceu.
+
 **Onde isso entra no roadmap**: pré-requisito do M11 — faz mais sentido simplificar o modelo antes do primeiro go-live real do que produtizar com o modelo antigo e depois migrar dados reais.
 
 ---
