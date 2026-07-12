@@ -12,7 +12,6 @@ interface AggregatedRow {
 
 export interface AnalyticsSummary {
   byAccount: AggregatedRow[];
-  byArtist: AggregatedRow[];
   byHour: AggregatedRow[];
 }
 
@@ -48,17 +47,16 @@ export async function listAnalyticsSummary(): Promise<AnalyticsSummary> {
   const { data, error } = await supabase
     .from("post_metrics")
     .select(
-      "likes, comments, reach, post:posts(scheduled_at, published_at, social_account:social_accounts(display_name), artist:artists(name))"
+      "likes, comments, reach, post:posts(scheduled_at, published_at, social_account:social_accounts(display_name))"
     )
     .gte("collected_at", cutoff);
 
   if (error) {
     console.error("[analytics] falha ao buscar resumo de métricas:", error.message);
-    return { byAccount: [], byArtist: [], byHour: [] };
+    return { byAccount: [], byHour: [] };
   }
 
   const byAccount = new Map<string, AggregatedRow>();
-  const byArtist = new Map<string, AggregatedRow>();
   const byHour = new Map<string, AggregatedRow>();
 
   for (const row of (data ?? []) as unknown as {
@@ -69,7 +67,6 @@ export async function listAnalyticsSummary(): Promise<AnalyticsSummary> {
       scheduled_at: string | null;
       published_at: string | null;
       social_account: { display_name: string } | null;
-      artist: { name: string } | null;
     } | null;
   }[]) {
     if (!row.post) continue;
@@ -85,10 +82,6 @@ export async function listAnalyticsSummary(): Promise<AnalyticsSummary> {
       );
     }
 
-    if (row.post.artist) {
-      accumulate(byArtist, row.post.artist.name, row.post.artist.name, metrics);
-    }
-
     const timestamp = row.post.scheduled_at ?? row.post.published_at;
     if (timestamp) {
       const key = hourInSaoPaulo(timestamp);
@@ -100,7 +93,6 @@ export async function listAnalyticsSummary(): Promise<AnalyticsSummary> {
 
   return {
     byAccount: Array.from(byAccount.values()).sort(sortByPosts),
-    byArtist: Array.from(byArtist.values()).sort(sortByPosts),
     byHour: Array.from(byHour.values()).sort((a, b) => a.key.localeCompare(b.key)),
   };
 }

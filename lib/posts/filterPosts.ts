@@ -6,9 +6,8 @@ import type {
 } from "@/lib/types/post";
 
 export interface PostFilters {
-  /** Busca textual livre (manchete, legenda, artista, música, fato). */
+  /** Busca textual livre (manchete, legenda, música, fato). */
   query: string;
-  artistId: string | null;
   socialAccountId: string | null;
   postType: PostType | null;
   contentSource: ContentSource | null;
@@ -16,7 +15,6 @@ export interface PostFilters {
 
 export const EMPTY_POST_FILTERS: PostFilters = {
   query: "",
-  artistId: null,
   socialAccountId: null,
   postType: null,
   contentSource: null,
@@ -25,7 +23,6 @@ export const EMPTY_POST_FILTERS: PostFilters = {
 export function hasActiveFilters(filters: PostFilters): boolean {
   return (
     filters.query.trim() !== "" ||
-    filters.artistId !== null ||
     filters.socialAccountId !== null ||
     filters.postType !== null ||
     filters.contentSource !== null
@@ -48,9 +45,6 @@ export function matchesPostFilters(
   post: PostWithRelations,
   filters: PostFilters
 ): boolean {
-  if (filters.artistId !== null && post.artist_id !== filters.artistId) {
-    return false;
-  }
   if (
     filters.socialAccountId !== null &&
     post.social_account_id !== filters.socialAccountId
@@ -75,8 +69,6 @@ export function matchesPostFilters(
     post.caption,
     post.track_name,
     post.source_fact,
-    post.artist?.name ?? null,
-    post.artist?.handle ?? null,
     post.social_account?.display_name ?? null,
     post.social_account?.handle ?? null,
   ]

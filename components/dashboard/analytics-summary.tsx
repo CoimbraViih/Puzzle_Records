@@ -67,16 +67,11 @@ export function AnalyticsSummarySection({
           números abaixo podem estar incompletos. Ver logs do cron collect-metrics.
         </p>
       )}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SummaryTable
           title="Por conta"
           rows={summary.byAccount}
           emptyLabel="Sem métricas coletadas ainda."
-        />
-        <SummaryTable
-          title="Por artista"
-          rows={summary.byArtist}
-          emptyLabel="Sem posts com artista vinculado."
         />
         <SummaryTable
           title="Por horário"

@@ -27,7 +27,6 @@ export async function createAcervoPost(
     return { error: "Você não tem permissão para adicionar ao acervo." };
   }
 
-  const artistId = (formData.get("artist_id") as string) || null;
   const socialAccountId = String(formData.get("social_account_id") ?? "");
   const caption = String(formData.get("caption") ?? "").trim();
 
@@ -64,7 +63,6 @@ export async function createAcervoPost(
   }
 
   const { error } = await supabase.from("posts").insert({
-    artist_id: artistId,
     social_account_id: socialAccountId,
     caption,
     media_url: mediaPath,

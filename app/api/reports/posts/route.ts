@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   const { data, error } = await supabase
     .from("posts")
     .select(
-      "id, status, post_type, content_source, headline, caption, scheduled_at, published_at, post_url, created_at, artist:artists(name), social_account:social_accounts(display_name), metrics:post_metrics(likes, comments, reach)"
+      "id, status, post_type, content_source, headline, caption, scheduled_at, published_at, post_url, created_at, social_account:social_accounts(display_name), metrics:post_metrics(likes, comments, reach)"
     )
     .gte("created_at", cutoff)
     .order("created_at", { ascending: false });

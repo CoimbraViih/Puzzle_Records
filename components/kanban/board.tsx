@@ -1,4 +1,3 @@
-import type { Artist } from "@/lib/types/artist";
 import {
   POST_STATUSES,
   POST_STATUS_LABELS,
@@ -13,13 +12,11 @@ export function KanbanBoard({
   posts,
   currentUserId,
   role,
-  artists,
   socialAccounts,
 }: {
   posts: PostWithRelations[];
   currentUserId: string;
   role: Role;
-  artists: Artist[];
   socialAccounts: SocialAccount[];
 }) {
   return (
@@ -48,7 +45,6 @@ export function KanbanBoard({
                   post={post}
                   currentUserId={currentUserId}
                   role={role}
-                  artists={artists}
                   socialAccounts={socialAccounts}
                 />
               ))}

@@ -55,7 +55,6 @@ export function AcervoBoard({ posts }: { posts: PostWithRelations[] }) {
                           ] ?? post.social_account.network
                         } — ${post.social_account.display_name}`
                       : "Conta social não vinculada"}
-                    {post.artist && ` · ${post.artist.name}`}
                   </p>
                   {column.state === "agendado" && post.scheduled_at && (
                     <p className="text-xs text-primary">

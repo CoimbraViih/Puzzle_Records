@@ -2,14 +2,13 @@ import { AcervoFormDialog } from "@/components/acervo/acervo-form-dialog";
 import { FilterableAcervoBoard } from "@/components/acervo/filterable-acervo-board";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { listAcervoPosts } from "@/lib/acervo/queries";
-import { listArtists, listSocialAccounts } from "@/lib/posts/queries";
+import { listSocialAccounts } from "@/lib/posts/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function AcervoPage() {
-  const [posts, artists, socialAccounts] = await Promise.all([
+  const [posts, socialAccounts] = await Promise.all([
     listAcervoPosts(),
-    listArtists(),
     listSocialAccounts(),
   ]);
 
@@ -19,13 +18,12 @@ export default async function AcervoPage() {
         title="Acervo"
         description="Conteúdo já produzido, agendado automaticamente para manter o perfil ativo."
         actions={
-          <AcervoFormDialog artists={artists} socialAccounts={socialAccounts} />
+          <AcervoFormDialog socialAccounts={socialAccounts} />
         }
       />
 
       <FilterableAcervoBoard
         posts={posts}
-        artists={artists}
         socialAccounts={socialAccounts}
       />
     </div>

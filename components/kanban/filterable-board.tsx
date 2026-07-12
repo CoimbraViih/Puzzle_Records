@@ -9,7 +9,6 @@ import {
   matchesPostFilters,
   type PostFilters,
 } from "@/lib/posts/filterPosts";
-import type { Artist } from "@/lib/types/artist";
 import type { PostWithRelations } from "@/lib/types/post";
 import type { Role } from "@/lib/types/profile";
 import type { SocialAccount } from "@/lib/types/social-account";
@@ -18,13 +17,11 @@ export function FilterableBoard({
   posts,
   currentUserId,
   role,
-  artists,
   socialAccounts,
 }: {
   posts: PostWithRelations[];
   currentUserId: string;
   role: Role;
-  artists: Artist[];
   socialAccounts: SocialAccount[];
 }) {
   const [filters, setFilters] = useState<PostFilters>(EMPTY_POST_FILTERS);
@@ -35,7 +32,6 @@ export function FilterableBoard({
       <BoardFilters
         filters={filters}
         onChange={setFilters}
-        artists={artists}
         socialAccounts={socialAccounts}
         resultCount={filtered.length}
         totalCount={posts.length}
@@ -44,7 +40,6 @@ export function FilterableBoard({
         posts={filtered}
         currentUserId={currentUserId}
         role={role}
-        artists={artists}
         socialAccounts={socialAccounts}
       />
     </div>

@@ -18,7 +18,7 @@ export const POST_STATUS_LABELS: Record<PostStatus, string> = {
   publicado: "Publicado",
 };
 
-export const CONTENT_SOURCES = ["drive", "acervo"] as const;
+export const CONTENT_SOURCES = ["drive", "acervo", "painel"] as const;
 export type ContentSource = (typeof CONTENT_SOURCES)[number];
 
 export const POST_TEMPLATES = ["A", "B"] as const;
@@ -43,7 +43,6 @@ export type MediaType = (typeof MEDIA_TYPES)[number];
 
 export interface Post {
   id: string;
-  artist_id: string | null;
   social_account_id: string | null;
   template: PostTemplate | null;
   post_type: PostType;
@@ -56,7 +55,7 @@ export interface Post {
   rejection_reason: string | null;
   submitted_for_approval_at: string | null;
   sla_alert_sent_at: string | null;
-  /** Preenchido pelo M3 quando artista/conta social do Drive não têm match. */
+  /** Preenchido pelo M3 quando conta social do Drive não tem match (conta ausente/duplicada). */
   ingestion_warning: string | null;
   /** Preenchidos pelo M3 a partir do JSON de metadado; consumidos pelo M4. */
   source_fact: string | null;
@@ -86,7 +85,6 @@ export interface Post {
 }
 
 export interface PostWithRelations extends Post {
-  artist: { id: string; name: string; handle: string } | null;
   social_account: {
     id: string;
     network: string;

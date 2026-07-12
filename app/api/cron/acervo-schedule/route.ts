@@ -64,31 +64,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "falha ao buscar contas" }, { status: 500 });
   }
 
-  // A regra de anti-repetição por artista é global (não filtra por conta), e
-  // não muda entre contas — busca uma única vez fora do loop por conta.
-  const { data: recentPosts, error: recentPostsError } = await supabase
-    .from("posts")
-    .select("artist_id, scheduled_at, published_at")
-    .in("status", ["aprovado", "publicado"])
-    .not("artist_id", "is", null);
-
-  if (recentPostsError) {
-    console.error(
-      "[acervo-schedule] falha ao buscar posts recentes por artista:",
-      recentPostsError.message
-    );
-  }
-
-  const recentArtistPosts = (recentPosts ?? [])
-    .map((post) => ({
-      artist_id: post.artist_id as string | null,
-      scheduled_or_published_at: post.scheduled_at ?? post.published_at,
-    }))
-    .filter(
-      (entry): entry is { artist_id: string; scheduled_or_published_at: string } =>
-        Boolean(entry.scheduled_or_published_at)
-    );
-
   for (const account of accounts ?? []) {
     const slots = (account.acervo_daily_slots as string[]) ?? [];
     if (slots.length === 0) continue;
@@ -121,7 +96,7 @@ export async function GET(request: Request) {
 
         const { data: candidates, error: candidatesError } = await supabase
           .from("posts")
-          .select("id, artist_id, created_at")
+          .select("id, created_at")
           .eq("social_account_id", account.id)
           .eq("content_source", "acervo")
           .eq("status", "aprovado")
@@ -134,11 +109,7 @@ export async function GET(request: Request) {
           );
         }
 
-        const chosen = pickCandidateForSlot(
-          target,
-          candidates ?? [],
-          recentArtistPosts
-        );
+        const chosen = pickCandidateForSlot(candidates ?? []);
 
         if (!chosen) continue;
 
@@ -157,12 +128,6 @@ export async function GET(request: Request) {
         }
 
         occupiedDateTimes.push(target);
-        if (chosen.artist_id) {
-          recentArtistPosts.push({
-            artist_id: chosen.artist_id,
-            scheduled_or_published_at: target.toISOString(),
-          });
-        }
         scheduled += 1;
       }
     }

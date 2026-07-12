@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
+import { generateCopyVariations, CopyGenerationError } from "@/lib/openai/generateCopy";
 import { renderArt, ArtRenderError } from "@/lib/renderer/renderArt";
 import { createClient } from "@/lib/supabase/server";
 import { mediaTypeFromFile, uploadMedia } from "@/lib/posts/media";
@@ -24,7 +25,6 @@ function revalidatePostPages() {
 
 function readPostFields(formData: FormData) {
   return {
-    artist_id: (formData.get("artist_id") as string) || null,
     social_account_id: String(formData.get("social_account_id") ?? ""),
     template: String(formData.get("template") ?? "") as PostTemplate,
     post_type: String(formData.get("post_type") ?? "") as PostType,
@@ -83,6 +83,135 @@ export async function createPost(
   });
 
   if (error) {
+    return { error: "Não foi possível salvar o post." };
+  }
+
+  revalidatePostPages();
+  return { success: true };
+}
+
+/**
+ * Best-effort: remove um arquivo já enviado ao Storage quando o resto do
+ * pipeline (IA ou insert) falha depois do upload, pra não acumular objeto
+ * órfão a cada tentativa. Nunca deve mascarar o erro original — só loga.
+ */
+async function cleanupOrphanedMedia(mediaPath: string) {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.storage.from("posts-media").remove([mediaPath]);
+    if (error) {
+      console.error("Falha ao limpar mídia órfã no Storage:", mediaPath, error);
+    }
+  } catch (err) {
+    console.error("Falha ao limpar mídia órfã no Storage:", mediaPath, err);
+  }
+}
+
+/**
+ * Caminho "imediato" do painel: upload direto de mídia (sem passar pelo
+ * Drive) com legenda gerada pela IA de forma síncrona, dentro da própria
+ * action. Não confundir com `createPost` (formulário manual do M2, sem IA).
+ */
+export async function createPostWithAI(
+  _prevState: PostFormState,
+  formData: FormData
+): Promise<PostFormState> {
+  const profile = await getCurrentProfile();
+  if (
+    !profile ||
+    (profile.role !== "equipe_conteudo" && profile.role !== "admin")
+  ) {
+    return { error: "Você não tem permissão para criar posts." };
+  }
+
+  const socialAccountId = String(formData.get("social_account_id") ?? "");
+  const postType = String(formData.get("post_type") ?? "") as PostType;
+  const templateRaw = String(formData.get("template") ?? "");
+  const context = String(formData.get("context") ?? "").trim();
+
+  if (!socialAccountId || !postType) {
+    return { error: "Preencha todos os campos obrigatórios." };
+  }
+
+  const mediaFile = formData.get("media") as File | null;
+  if (!mediaFile || mediaFile.size === 0) {
+    return { error: "Selecione um arquivo de mídia." };
+  }
+
+  const mediaType = mediaTypeFromFile(mediaFile);
+
+  if (mediaType === "image" && !context) {
+    return { error: "Digite o contexto da imagem para a IA escrever a legenda." };
+  }
+  // Template só se aplica à renderização de news card (M5), que só existe
+  // pra imagem — vídeo nunca usa esse campo, ver docs/CLAUDE.md.
+  if (mediaType === "image" && !templateRaw) {
+    return { error: "Selecione um template para a imagem." };
+  }
+  const template: PostTemplate | null =
+    mediaType === "image" ? (templateRaw as PostTemplate) : null;
+
+  let mediaPath: string;
+  let mediaBuffer: Buffer;
+  try {
+    mediaBuffer = Buffer.from(await mediaFile.arrayBuffer());
+    mediaPath = await uploadMedia(mediaFile);
+  } catch {
+    return { error: "Falha ao enviar o arquivo de mídia. Tente novamente." };
+  }
+
+  let variations: CopyVariation[];
+  try {
+    variations =
+      mediaType === "video"
+        ? await generateCopyVariations({
+            mode: "video",
+            postType,
+            trackName: null,
+            additionalContext: context || null,
+            videoBuffer: mediaBuffer,
+            filename: mediaFile.name,
+          })
+        : await generateCopyVariations({
+            mode: "text",
+            postType,
+            fact: context,
+            trackName: null,
+          });
+  } catch (err) {
+    const message =
+      err instanceof CopyGenerationError
+        ? err.message
+        : "A IA não conseguiu gerar a legenda. Tente novamente.";
+    console.error("Falha ao gerar copy no upload direto:", err);
+    await cleanupOrphanedMedia(mediaPath);
+    return { error: message };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("posts").insert({
+    social_account_id: socialAccountId,
+    template,
+    post_type: postType,
+    headline: variations[0].headline,
+    caption: variations[0].caption,
+    copy_variations: variations,
+    media_url: mediaPath,
+    media_type: mediaType,
+    // Vídeo nunca gera news card (M5 é só imagem) — mesmo padrão do
+    // acervo (M8): a própria mídia é a "arte". Sem isso, o post fica
+    // travado pra sempre no gate de publicação do M7 (exige
+    // rendered_art_url preenchido).
+    rendered_art_url: mediaType === "video" ? mediaPath : null,
+    source_fact: context || null,
+    status: "rascunho",
+    content_source: "painel",
+    created_by: profile.id,
+  });
+
+  if (error) {
+    console.error("Falha ao salvar post do upload direto:", error);
+    await cleanupOrphanedMedia(mediaPath);
     return { error: "Não foi possível salvar o post." };
   }
 

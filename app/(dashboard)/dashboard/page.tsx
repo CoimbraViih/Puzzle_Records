@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { countMetricsErrors, listAnalyticsSummary } from "@/lib/analytics/queries";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
-import { listArtists, listPosts, listSocialAccounts } from "@/lib/posts/queries";
+import { listPosts, listSocialAccounts } from "@/lib/posts/queries";
 import { POST_STATUSES, POST_STATUS_LABELS } from "@/lib/types/post";
 import { ROLE_LABELS } from "@/lib/types/profile";
 
@@ -13,10 +13,9 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const profile = await getCurrentProfile();
-  const [posts, artists, socialAccounts, analyticsSummary, metricsErrorCount] =
+  const [posts, socialAccounts, analyticsSummary, metricsErrorCount] =
     await Promise.all([
       listPosts(),
-      listArtists(),
       listSocialAccounts(),
       listAnalyticsSummary(),
       countMetricsErrors(),
@@ -59,14 +58,6 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-4 text-card-foreground">
-          <span className="text-2xl font-semibold tracking-tight">
-            {artists.length}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {artists.length === 1 ? "Artista cadastrado" : "Artistas cadastrados"}
-          </span>
-        </div>
         <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-4 text-card-foreground">
           <span className="text-2xl font-semibold tracking-tight">
             {socialAccounts.length}

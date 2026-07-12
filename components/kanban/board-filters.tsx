@@ -1,7 +1,6 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import type { Artist } from "@/lib/types/artist";
 import type { SocialAccount } from "@/lib/types/social-account";
 import {
   CONTENT_SOURCES,
@@ -19,6 +18,7 @@ import {
 const CONTENT_SOURCE_LABELS: Record<ContentSource, string> = {
   drive: "Drive",
   acervo: "Acervo",
+  painel: "Painel",
 };
 
 const SELECT_CLASSES =
@@ -27,7 +27,6 @@ const SELECT_CLASSES =
 export function BoardFilters({
   filters,
   onChange,
-  artists,
   socialAccounts,
   showContentSource = true,
   showPostType = true,
@@ -36,7 +35,6 @@ export function BoardFilters({
 }: {
   filters: PostFilters;
   onChange: (filters: PostFilters) => void;
-  artists: Artist[];
   socialAccounts: SocialAccount[];
   showContentSource?: boolean;
   showPostType?: boolean;
@@ -48,25 +46,10 @@ export function BoardFilters({
       <Input
         value={filters.query}
         onChange={(e) => onChange({ ...filters, query: e.target.value })}
-        placeholder="Buscar por manchete, legenda, artista, música..."
+        placeholder="Buscar por manchete, legenda, música..."
         className="h-9 w-full sm:max-w-xs"
         aria-label="Buscar posts"
       />
-      <select
-        className={SELECT_CLASSES}
-        value={filters.artistId ?? ""}
-        onChange={(e) =>
-          onChange({ ...filters, artistId: e.target.value || null })
-        }
-        aria-label="Filtrar por artista"
-      >
-        <option value="">Todos os artistas</option>
-        {artists.map((artist) => (
-          <option key={artist.id} value={artist.id}>
-            {artist.name}
-          </option>
-        ))}
-      </select>
       <select
         className={SELECT_CLASSES}
         value={filters.socialAccountId ?? ""}

@@ -1,10 +1,8 @@
 import { POST_TYPES, type PostType } from "@/lib/types/post";
 
 export interface DriveMetadata {
-  artista: string | null;
   musica: string | null;
-  fato: string;
-  contaSocial: string;
+  fato: string | null;
   tipo: PostType;
 }
 
@@ -18,11 +16,16 @@ function readOptionalString(value: unknown): string | null {
 
 /**
  * Espera um JSON no formato:
- * { "artista": "...", "musica": "...", "fato": "...",
- *   "conta_social": "...", "tipo": "lancamento" }
- * `artista` e `musica` são opcionais; os demais são obrigatórios.
+ * { "musica": "...", "fato": "...", "tipo": "lancamento" }
+ * `musica` é sempre opcional. `fato` é obrigatório só para imagem — para
+ * vídeo, a IA analisa o próprio conteúdo quando `fato` está ausente (ver
+ * lib/openai/videoAnalysis.ts), mas um `fato` presente ainda é aproveitado
+ * como contexto adicional.
  */
-export function parseMetadata(raw: string): DriveMetadata {
+export function parseMetadata(
+  raw: string,
+  mediaType: "image" | "video"
+): DriveMetadata {
   let json: unknown;
   try {
     json = JSON.parse(raw);
@@ -36,12 +39,12 @@ export function parseMetadata(raw: string): DriveMetadata {
 
   const data = json as Record<string, unknown>;
   const fato = readOptionalString(data.fato);
-  const contaSocial = readOptionalString(data.conta_social);
   const tipo = typeof data.tipo === "string" ? data.tipo : "";
 
-  if (!fato) throw new InvalidMetadataError("Campo 'fato' é obrigatório.");
-  if (!contaSocial) {
-    throw new InvalidMetadataError("Campo 'conta_social' é obrigatório.");
+  if (!fato && mediaType === "image") {
+    throw new InvalidMetadataError(
+      "Campo 'fato' é obrigatório para imagem (vídeo pode omitir — a IA analisa o conteúdo)."
+    );
   }
   if (!POST_TYPES.includes(tipo as PostType)) {
     throw new InvalidMetadataError(
@@ -50,10 +53,8 @@ export function parseMetadata(raw: string): DriveMetadata {
   }
 
   return {
-    artista: readOptionalString(data.artista),
     musica: readOptionalString(data.musica),
     fato,
-    contaSocial,
     tipo: tipo as PostType,
   };
 }

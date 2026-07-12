@@ -2,7 +2,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays,
   CheckSquare,
-  Disc3,
   Library,
   LayoutDashboard,
   LayoutGrid,
@@ -72,12 +71,6 @@ const NAV_GROUPS: NavGroup[] = [
         title: "Painel admin",
         url: "/admin",
         icon: Shield,
-        roles: ["admin"],
-      },
-      {
-        title: "Artistas",
-        url: "/admin/artistas",
-        icon: Disc3,
         roles: ["admin"],
       },
       {

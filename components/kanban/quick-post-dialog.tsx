@@ -3,12 +3,11 @@
 import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { createPost, updatePost, type PostFormState } from "@/lib/posts/actions";
+import { createPostWithAI, type PostFormState } from "@/lib/posts/actions";
 import {
   POST_TEMPLATES,
   POST_TYPE_LABELS,
   POST_TYPES,
-  type PostWithRelations,
 } from "@/lib/types/post";
 import {
   SOCIAL_NETWORK_LABELS,
@@ -17,22 +16,17 @@ import {
 
 const initialState: PostFormState = undefined;
 
-export function PostFormDialog({
-  mode,
-  post,
+export function QuickPostDialog({
   socialAccounts,
-  triggerLabel,
-  triggerVariant = "default",
 }: {
-  mode: "create" | "edit";
-  post?: PostWithRelations;
   socialAccounts: SocialAccount[];
-  triggerLabel: string;
-  triggerVariant?: "default" | "outline" | "secondary" | "ghost";
 }) {
   const [open, setOpen] = useState(false);
-  const action = mode === "create" ? createPost : updatePost;
-  const [state, formAction, pending] = useActionState(action, initialState);
+  const [state, formAction, pending] = useActionState(
+    createPostWithAI,
+    initialState
+  );
+  const [isVideo, setIsVideo] = useState(false);
 
   // Fecha o modal quando o post é salvo com sucesso. Ajuste de estado
   // durante a renderização (guardado por `handledState`) em vez de
@@ -43,6 +37,7 @@ export function PostFormDialog({
     setHandledState(state);
     if (state?.success) {
       setOpen(false);
+      setIsVideo(false);
     }
   }
 
@@ -50,37 +45,37 @@ export function PostFormDialog({
     <>
       <Button
         type="button"
-        variant={triggerVariant}
+        variant="outline"
         size="sm"
         onClick={() => setOpen(true)}
       >
-        {triggerLabel}
+        Post rápido
       </Button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-background p-6">
             <h2 className="mb-4 text-lg font-semibold text-foreground">
-              {mode === "create" ? "Novo post" : "Editar post"}
+              Post rápido
             </h2>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Envie a mídia direto pelo painel — a IA gera a manchete e a
+              legenda automaticamente.
+            </p>
 
             <form action={formAction} className="flex flex-col gap-4">
-              {mode === "edit" && post && (
-                <input type="hidden" name="post_id" value={post.id} />
-              )}
-
               <div className="flex flex-col gap-1.5">
                 <label
-                  htmlFor="social_account_id"
+                  htmlFor="quick_social_account_id"
                   className="text-sm text-muted-foreground"
                 >
                   Conta social
                 </label>
                 <select
-                  id="social_account_id"
+                  id="quick_social_account_id"
                   name="social_account_id"
                   required
-                  defaultValue={post?.social_account_id ?? ""}
+                  defaultValue=""
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="" disabled>
@@ -96,43 +91,45 @@ export function PostFormDialog({
               </div>
 
               <div className="flex gap-4">
-                <div className="flex flex-1 flex-col gap-1.5">
-                  <label
-                    htmlFor="template"
-                    className="text-sm text-muted-foreground"
-                  >
-                    Template
-                  </label>
-                  <select
-                    id="template"
-                    name="template"
-                    required
-                    defaultValue={post?.template ?? ""}
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                  >
-                    <option value="" disabled>
-                      Selecione
-                    </option>
-                    {POST_TEMPLATES.map((template) => (
-                      <option key={template} value={template}>
-                        Template {template}
+                {!isVideo && (
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <label
+                      htmlFor="quick_template"
+                      className="text-sm text-muted-foreground"
+                    >
+                      Template
+                    </label>
+                    <select
+                      id="quick_template"
+                      name="template"
+                      required
+                      defaultValue=""
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    >
+                      <option value="" disabled>
+                        Selecione
                       </option>
-                    ))}
-                  </select>
-                </div>
+                      {POST_TEMPLATES.map((template) => (
+                        <option key={template} value={template}>
+                          Template {template}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="flex flex-1 flex-col gap-1.5">
                   <label
-                    htmlFor="post_type"
+                    htmlFor="quick_post_type"
                     className="text-sm text-muted-foreground"
                   >
                     Tipo
                   </label>
                   <select
-                    id="post_type"
+                    id="quick_post_type"
                     name="post_type"
                     required
-                    defaultValue={post?.post_type ?? ""}
+                    defaultValue=""
                     className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
                     <option value="" disabled>
@@ -149,65 +146,44 @@ export function PostFormDialog({
 
               <div className="flex flex-col gap-1.5">
                 <label
-                  htmlFor="headline"
+                  htmlFor="quick_media"
                   className="text-sm text-muted-foreground"
                 >
-                  Manchete
+                  Mídia (imagem ou vídeo)
                 </label>
                 <input
-                  id="headline"
-                  name="headline"
-                  required
-                  defaultValue={post?.headline ?? ""}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="caption"
-                  className="text-sm text-muted-foreground"
-                >
-                  Legenda
-                </label>
-                <textarea
-                  id="caption"
-                  name="caption"
-                  required
-                  rows={4}
-                  defaultValue={post?.caption ?? ""}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="media" className="text-sm text-muted-foreground">
-                  Mídia {mode === "edit" ? "(opcional — substitui a atual)" : ""}
-                </label>
-                <input
-                  id="media"
+                  id="quick_media"
                   name="media"
                   type="file"
                   accept="image/*,video/*"
-                  required={mode === "create"}
+                  required
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    setIsVideo(Boolean(file?.type.startsWith("video/")));
+                  }}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label
-                  htmlFor="scheduled_at"
+                  htmlFor="quick_context"
                   className="text-sm text-muted-foreground"
                 >
-                  Agendamento (opcional)
+                  Contexto
                 </label>
-                <input
-                  id="scheduled_at"
-                  name="scheduled_at"
-                  type="datetime-local"
-                  defaultValue={post?.scheduled_at?.slice(0, 16) ?? ""}
+                <textarea
+                  id="quick_context"
+                  name="context"
+                  rows={4}
+                  required={!isVideo}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                 />
+                <p className="text-xs text-muted-foreground">
+                  {isVideo
+                    ? "Opcional para vídeo — a IA analisa o conteúdo sozinha."
+                    : "Obrigatório para imagem — a IA usa isso pra escrever a legenda."}
+                </p>
               </div>
 
               {state?.error && (
@@ -223,7 +199,7 @@ export function PostFormDialog({
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={pending}>
-                  {pending ? "Salvando..." : "Salvar"}
+                  {pending ? "Gerando legenda com IA..." : "Gerar post"}
                 </Button>
               </div>
             </form>
