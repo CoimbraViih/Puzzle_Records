@@ -23,6 +23,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // .claude/worktrees/** are separate nested git checkouts (each with its
+    // own tsconfig/source tree) used for isolated feature work — linting
+    // them from the main repo root double-scans the same files under a
+    // different working directory and produces spurious parser errors.
+    ".claude/**",
   ]),
 ]);
 
