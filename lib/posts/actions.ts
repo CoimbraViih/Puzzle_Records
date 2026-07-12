@@ -109,10 +109,10 @@ export async function createPostWithAI(
 
   const socialAccountId = String(formData.get("social_account_id") ?? "");
   const postType = String(formData.get("post_type") ?? "") as PostType;
-  const template = String(formData.get("template") ?? "") as PostTemplate;
+  const templateRaw = String(formData.get("template") ?? "");
   const context = String(formData.get("context") ?? "").trim();
 
-  if (!socialAccountId || !postType || !template) {
+  if (!socialAccountId || !postType) {
     return { error: "Preencha todos os campos obrigatórios." };
   }
 
@@ -122,9 +122,17 @@ export async function createPostWithAI(
   }
 
   const mediaType = mediaTypeFromFile(mediaFile);
+
   if (mediaType === "image" && !context) {
     return { error: "Digite o contexto da imagem para a IA escrever a legenda." };
   }
+  // Template só se aplica à renderização de news card (M5), que só existe
+  // pra imagem — vídeo nunca usa esse campo, ver docs/CLAUDE.md.
+  if (mediaType === "image" && !templateRaw) {
+    return { error: "Selecione um template para a imagem." };
+  }
+  const template: PostTemplate | null =
+    mediaType === "image" ? (templateRaw as PostTemplate) : null;
 
   let mediaPath: string;
   let mediaBuffer: Buffer;
@@ -172,6 +180,11 @@ export async function createPostWithAI(
     copy_variations: variations,
     media_url: mediaPath,
     media_type: mediaType,
+    // Vídeo nunca gera news card (M5 é só imagem) — mesmo padrão do
+    // acervo (M8): a própria mídia é a "arte". Sem isso, o post fica
+    // travado pra sempre no gate de publicação do M7 (exige
+    // rendered_art_url preenchido).
+    rendered_art_url: mediaType === "video" ? mediaPath : null,
     source_fact: context || null,
     status: "rascunho",
     content_source: "painel",
