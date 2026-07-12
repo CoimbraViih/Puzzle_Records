@@ -232,22 +232,49 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 
 **Nota (12/07/2026)**: implementado no worktree `pivo-conta-unica-ia-multimodal`
 (plano em `docs/plans/2026-07-10-pivo-conta-unica-ia-multimodal.md`, mais o
-fix de acabamento em `docs/plans/2026-07-12-finalizar-pivo-conta-unica.md`).
-Falta só rodar a migration contra um projeto Supabase real — isso é
-trabalho do M11, não deste pivô.
+fix de acabamento em `docs/plans/2026-07-12-finalizar-pivo-conta-unica.md`,
+subagent-driven-development, 7 tasks com implementer+reviewer por task).
+Merge feito em `main` (commit de merge + revisão final da branch, 0
+Critical, 2 Important corrigidos antes do merge: `maxDuration=300` no
+"Post rápido" de vídeo — pipeline FFmpeg+Whisper+GPT-4o de 20-60s sem
+timeout configurado — e limpeza de mídia órfã no Storage quando a IA ou o
+insert falham após o upload). Falta só rodar a migration contra um
+projeto Supabase real — isso é trabalho do M11, não deste pivô.
 
-**Débito técnico conhecido** (achados da revisão final da branch, baixa
-prioridade, não bloqueia o M11): o cron `app/api/cron/generate-copy`
-processa vídeo pelo mesmo pipeline síncrono de FFmpeg+Whisper+GPT-4o do
-upload direto, mas sem `maxDuration` configurado — mesmo risco de timeout
-já corrigido pro "Post rápido" (`app/(dashboard)/conteudo/page.tsx`), só
-que aqui não foi corrigido (fora do escopo deste pivô, cron nunca foi
-tocado pelo plano de acabamento); mensagem de `copy_generation_error`
-genérica ("Falha ao gerar manchete/legenda via OpenAI") pra falhas que não
-vêm da OpenAI (ex.: `VideoAnalysisError` do ffmpeg) — causa real só
-aparece no log do servidor; vídeo acima de ~25MB estoura o limite do
-Whisper e cai silenciosamente pra legenda só com base nos frames (sem
-transcrição), sem log dedicado avisando que isso aconteceu.
+- [x] Revisão fresh-eyes independente pós-merge (sem contexto das revisões
+  anteriores, focada só em achar bugs) — 0 Critical (regra de ouro
+  íntegra: `createPostWithAI` só insere em `rascunho`; migration `0012`
+  auditada de novo contra a árvore inteira, zero referência residual a
+  `artist_id`/`artists`/`Artist`; caminho de publicação de vídeo do
+  upload direto rastreado ponta a ponta até o Zernio). 1 Important achado
+  e corrigido: o mesmo risco de timeout já resolvido pro "Post rápido"
+  também existia no cron `generate-copy` — que é o canal **principal**
+  (Drive), não só o secundário — agravado pelo processamento sequencial
+  (2-3 vídeos pendentes no mesmo ciclo estourariam o timeout antes de
+  terminar, e o post travado nunca grava `copy_generation_error`, só
+  volta a ser reprocessado — e recobrado da OpenAI — no ciclo seguinte,
+  em loop). Corrigido com `maxDuration=300` + limite de 1 vídeo
+  processado por execução do cron (imagem continua sem limite).
+
+**Débito técnico conhecido** (achados Minor da revisão fresh-eyes
+pós-merge, baixa prioridade, não bloqueia o M11): `createPostWithAI` não
+tem idempotência no servidor — um duplo-submit (retry de rede, não só
+duplo-clique, já coberto pelo `disabled={pending}` do botão) gera duas
+linhas em `rascunho` e cobra a OpenAI duas vezes; impacto limitado porque
+ambas passam pela aprovação humana antes de qualquer publicação. Extração
+de frames (`lib/openai/videoAnalysis.ts`) amostra só os primeiros ~10s do
+vídeo (`fps=1/2` + `-frames:v 5`), então um clipe de 60s tem a legenda
+gerada só a partir do início, podendo perder o clímax. Vídeo acima de
+~25MB estoura o limite do Whisper e cai silenciosamente pra legenda só
+com base nos frames (sem transcrição), sem log dedicado avisando que isso
+aconteceu. Modo vídeo não funciona com o modelo grátis do OpenRouter
+(`openai/gpt-oss-20b:free` é texto-only, não aceita `image_url`) — só
+afeta o caminho de teste sem custo, produção usa GPT-4o real. Sem
+validação server-side de tipo/tamanho de mídia em `createPostWithAI` além
+do `accept` do `<input>` (client-only) — um MIME de vídeo forjado roda
+ffmpeg contra lixo, mas falha de forma não-silenciosa (erro capturado,
+mídia limpa, erro devolvido ao usuário), então o risco é só custo de
+processamento desperdiçado, não corrupção de dado.
 
 **Onde isso entra no roadmap**: pré-requisito do M11 — faz mais sentido simplificar o modelo antes do primeiro go-live real do que produtizar com o modelo antigo e depois migrar dados reais.
 
