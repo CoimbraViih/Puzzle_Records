@@ -55,10 +55,11 @@ ESQUECE, AQUI É O BRASILLL RAPAZ!🇧🇷    ← fecho opinativo/torcida em CAP
 ### Post de lançamento — curto e direto
 ```
 O Talento do Staylon é surreal! 🔥
-
-@mcstaylon                              ← mention do artista
 ```
-+ **música taggeada no post** (recurso nativo do Instagram)
+Sem @mention/música obrigatórios (não há mais cadastro de artista — conta
+única `@puzzlerecordss`, ver `docs/CLAUDE.md`). Se o post menciona um
+artista de terceiros que a equipe/IA conhece, citar o nome/@ dele no texto
+é uma escolha editorial pontual, não um campo estruturado do sistema.
 
 ## 6. Tom de voz
 
@@ -71,7 +72,8 @@ O Talento do Staylon é surreal! 🔥
 ## 7. Regras para o agente (resumo executável)
 
 1. Todo post gerado escolhe: Template A ou B + fórmula de manchete + padrão de legenda conforme o tipo (viral × lançamento).
-2. Legendas sem hashtags; lançamentos sempre com @mention e tag de música.
+2. Legendas sem hashtags; @mention/música em lançamentos são editoriais e
+   pontuais, não obrigatórios (sem cadastro de artista, ver docs/CLAUDE.md).
 3. Manchete carrega a informação; legenda carrega o engajamento.
 4. Emojis obrigatórios, mas 2–4 por bloco, não em cada palavra.
 5. Posts virais terminam com pergunta OU opinião de torcida — nunca neutros.
