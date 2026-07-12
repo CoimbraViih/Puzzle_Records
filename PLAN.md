@@ -221,14 +221,20 @@ MVP (Fase 1) do Agente IA Puzzle Records, quebrado em incrementos entregáveis e
 - Prompts de geração de copy (`lib/openai/prompts.ts`) reescritos com base em boas práticas de copywriting e social media (skills do Claude Code `copywriting`/`social`, usadas nesta sessão para fundamentar a reescrita — conhecimento incorporado ao prompt fixo, não uma integração em runtime).
 
 **Trabalho de implementação necessário** (retrabalho sobre M2–M4/M8, antes de fechar o M11):
-- [ ] Migration removendo/desativando `artists` e `artist_id` — decidir na implementação se a coluna é dropada ou só deixada nula/sem uso.
-- [ ] Remover `/admin/artistas` e toda referência a artista no Kanban/acervo/calendário/analytics/CSV.
-- [ ] Simplificar `lib/drive/metadata.ts`/`matchArtistAndAccount.ts`: remover campos `artista`/`conta_social` do `.json` (conta é sempre a única cadastrada), tornar `fato` opcional para `media_type = 'video'`.
-- [ ] Novo formulário de "Novo post" com upload direto (segundo canal) com dois modos: vídeo (sem campo de contexto, dispara análise automática) e imagem (campo de contexto obrigatório).
-- [ ] Pipeline de análise de vídeo: extração de frames (FFmpeg) + transcrição (Whisper) + prompt de visão (GPT-4o) → legenda; usado tanto pelo cron `generate-copy` (vídeo do Drive sem `fato`) quanto pelo upload direto; mesmo padrão de erro nunca-silencioso dos milestones anteriores (`copy_generation_error`).
-- [ ] `lib/openai/prompts.ts` reescrito com as diretrizes de copywriting/social media.
-- [ ] `lib/acervo/scheduler.ts`: remover a anti-repetição por artista (`ACERVO_ARTIST_MIN_GAP_DAYS`) — avaliar se precisa de um substituto (ex.: não repetir a mesma mídia) ou se cai sem substituto.
-- [ ] Atualizar `GUIA-DE-ESTILO-POSTS-PUZZLE.md` — a regra de `@mention` obrigatório de artista deixa de ser padrão (vira menção editorial pontual, ver `docs/CLAUDE.md`).
+- [x] Migration removendo/desativando `artists` e `artist_id` — decidir na implementação se a coluna é dropada ou só deixada nula/sem uso.
+- [x] Remover `/admin/artistas` e toda referência a artista no Kanban/acervo/calendário/analytics/CSV.
+- [x] Simplificar `lib/drive/metadata.ts`/`matchArtistAndAccount.ts`: remover campos `artista`/`conta_social` do `.json` (conta é sempre a única cadastrada), tornar `fato` opcional para `media_type = 'video'`.
+- [x] Novo formulário de "Novo post" com upload direto (segundo canal) com dois modos: vídeo (sem campo de contexto, dispara análise automática) e imagem (campo de contexto obrigatório).
+- [x] Pipeline de análise de vídeo: extração de frames (FFmpeg) + transcrição (Whisper) + prompt de visão (GPT-4o) → legenda; usado tanto pelo cron `generate-copy` (vídeo do Drive sem `fato`) quanto pelo upload direto; mesmo padrão de erro nunca-silencioso dos milestones anteriores (`copy_generation_error`).
+- [x] `lib/openai/prompts.ts` reescrito com as diretrizes de copywriting/social media.
+- [x] `lib/acervo/scheduler.ts`: remover a anti-repetição por artista (`ACERVO_ARTIST_MIN_GAP_DAYS`) — avaliar se precisa de um substituto (ex.: não repetir a mesma mídia) ou se cai sem substituto.
+- [x] Atualizar `GUIA-DE-ESTILO-POSTS-PUZZLE.md` — a regra de `@mention` obrigatório de artista deixa de ser padrão (vira menção editorial pontual, ver `docs/CLAUDE.md`).
+
+**Nota (12/07/2026)**: implementado no worktree `pivo-conta-unica-ia-multimodal`
+(plano em `docs/plans/2026-07-10-pivo-conta-unica-ia-multimodal.md`, mais o
+fix de acabamento em `docs/plans/2026-07-12-finalizar-pivo-conta-unica.md`).
+Falta só rodar a migration contra um projeto Supabase real — isso é
+trabalho do M11, não deste pivô.
 
 **Onde isso entra no roadmap**: pré-requisito do M11 — faz mais sentido simplificar o modelo antes do primeiro go-live real do que produtizar com o modelo antigo e depois migrar dados reais.
 
