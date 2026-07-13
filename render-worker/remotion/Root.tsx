@@ -4,6 +4,7 @@ import { PuzzleTemplateV1, type PuzzleTemplateV1Props } from "./PuzzleTemplateV1
 
 export function RemotionRoot() {
   return (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- remotion@4.0.489's Composition first generic is a Zod-schema slot; no schema is defined for this template, `any` is the narrowest satisfying type
     <Composition<any, PuzzleTemplateV1Props & Record<string, unknown>>
       id="PuzzleTemplateV1"
       component={PuzzleTemplateV1}

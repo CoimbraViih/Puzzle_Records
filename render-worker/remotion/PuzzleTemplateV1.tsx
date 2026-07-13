@@ -4,7 +4,6 @@ import {
   Img,
   OffthreadVideo,
   Sequence,
-  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
