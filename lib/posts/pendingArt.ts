@@ -13,6 +13,7 @@ export async function listPostsPendingArt(): Promise<PostPendingArt[]> {
   const { data, error } = await supabase
     .from("posts")
     .select("id, template, headline, media_url, media_type")
+    .eq("media_type", "image")
     .not("headline", "is", null)
     .not("template", "is", null)
     .is("rendered_art_url", null)
