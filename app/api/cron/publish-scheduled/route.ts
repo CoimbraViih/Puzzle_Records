@@ -101,7 +101,7 @@ async function recordPublishFailureOnAccount(socialAccountId: string) {
 
   const { data: account, error: fetchError } = await supabase
     .from("social_accounts")
-    .select("consecutive_publish_failures, connection_status")
+    .select("consecutive_publish_failures, connection_status, display_name")
     .eq("id", socialAccountId)
     .single();
 
@@ -115,14 +115,13 @@ async function recordPublishFailureOnAccount(socialAccountId: string) {
 
   const nextFailures = account.consecutive_publish_failures + 1;
   const crossedThreshold = nextFailures >= DISCONNECT_FAILURE_THRESHOLD;
+  const isNewDisconnection =
+    crossedThreshold && account.connection_status !== "desconectada";
 
-  // Sem alerta por e-mail: a única ação além do contador é marcar
-  // connection_status = "desconectada", que já é exibido no dashboard
-  // (ver app/(dashboard)/dashboard/page.tsx).
   const update: Record<string, unknown> = {
     consecutive_publish_failures: nextFailures,
   };
-  if (crossedThreshold && account.connection_status !== "desconectada") {
+  if (isNewDisconnection) {
     update.connection_status = "desconectada";
   }
 
@@ -136,6 +135,23 @@ async function recordPublishFailureOnAccount(socialAccountId: string) {
       `[publish-scheduled] falha ao atualizar estado da conta ${socialAccountId}:`,
       error.message
     );
+    return;
+  }
+
+  // Alerta ativo (M13): sem isso, uma desconexão só era visível passivamente
+  // no dashboard (débito deixado pela remoção do Resend em 09/07/2026).
+  if (isNewDisconnection) {
+    const { error: notifyError } = await supabase.from("notifications").insert({
+      type: "conta_desconectada",
+      message: `A conta ${account.display_name} parece estar desconectada (${nextFailures} falhas de publicação seguidas).`,
+      social_account_id: socialAccountId,
+    });
+    if (notifyError) {
+      console.error(
+        `[publish-scheduled] falha ao criar notificação de desconexão para ${socialAccountId}:`,
+        notifyError.message
+      );
+    }
   }
 }
 
