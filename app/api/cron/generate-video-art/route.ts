@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { listPostsPendingVideoArt } from "@/lib/posts/pendingVideoArt";
-import { getDefaultVideoTemplate } from "@/lib/templates/queries";
+import { getDefaultVideoTemplateForCron } from "@/lib/templates/queries";
 import { transcribeWithWordTimestamps, VideoAnalysisError } from "@/lib/openai/videoAnalysis";
 import { submitRenderJob, RenderWorkerError } from "@/lib/renderWorker/client";
 
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
   const [pending, template] = await Promise.all([
     listPostsPendingVideoArt(),
-    getDefaultVideoTemplate(),
+    getDefaultVideoTemplateForCron(),
   ]);
 
   if (!template) {
@@ -71,6 +71,7 @@ export async function GET(request: Request) {
 
       if (error) {
         console.error(`[generate-video-art] falha ao gravar video_render_job_id do post ${post.id}:`, error.message);
+        await recordError(post.id, `Job de render (${jobId}) submetido, mas falha ao gravar no post: ${error.message}`);
         continue;
       }
       submitted += 1;
