@@ -51,5 +51,10 @@ export function extractContextFromFilename(fileName: string): string | null {
     return null;
   }
 
-  return tokens.join(" ").trim();
+  // Return only alphabetic tokens (removing non-alphabetic residuals like numbers),
+  // but keep ALL alphabetic tokens including short connectors
+  const allAlphabetic = tokens.filter((token) =>
+    /^[a-zA-ZÀ-ÖØ-öø-ÿ]+$/.test(token)
+  );
+  return allAlphabetic.join(" ");
 }
