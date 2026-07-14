@@ -3,7 +3,9 @@ import type { drive_v3 } from "googleapis";
 
 import { InvalidMetadataError, parseMetadata } from "./metadata";
 import { resolveSocialAccount } from "./resolveSocialAccount";
+import { extractContextFromFilename } from "./filenameContext";
 import type { FilePair } from "./pairFiles";
+import type { PostType } from "@/lib/types/post";
 
 function mediaTypeFromMimeType(mimeType: string): "image" | "video" {
   return mimeType.startsWith("video/") ? "video" : "image";
@@ -45,12 +47,14 @@ async function recordError(
 }
 
 /**
- * Processa um par mídia+metadado: baixa e valida o JSON, sobe a mídia pro
- * Storage, resolve artista/conta social, insere o post 'pendente' e move
- * os arquivos originais pra "Processados". Falhas transitórias (download,
- * upload) não são registradas em drive_ingestions — o par continua
- * elegível na próxima execução do cron. Falhas de metadado são registradas
- * como 'erro' (log, não bloqueia retry depois que a equipe corrigir).
+ * Processa um par mídia+metadado: baixa e valida o JSON quando presente
+ * (o `.json` é opcional — sem ele, usa o fallback de contexto extraído do
+ * nome do arquivo), sobe a mídia pro Storage, resolve artista/conta social,
+ * insere o post 'pendente' e move os arquivos originais pra "Processados".
+ * Falhas transitórias (download, upload) não são registradas em
+ * drive_ingestions — o par continua elegível na próxima execução do cron.
+ * Falhas de metadado são registradas como 'erro' (log, não bloqueia retry
+ * depois que a equipe corrigir).
  */
 export async function ingestFilePair(
   drive: drive_v3.Drive,
@@ -68,25 +72,38 @@ export async function ingestFilePair(
 
   if (alreadyProcessed.data) return;
 
-  let metadataText: string;
-  try {
-    const buffer = await downloadFileContent(drive, pair.metadata.id);
-    metadataText = buffer.toString("utf-8");
-  } catch (err) {
-    console.error("Falha ao baixar o metadado do Drive (tenta de novo depois):", err);
-    return;
-  }
-
   const mediaType = mediaTypeFromMimeType(pair.media.mimeType);
 
-  let metadata;
-  try {
-    metadata = parseMetadata(metadataText, mediaType);
-  } catch (err) {
-    const message =
-      err instanceof InvalidMetadataError ? err.message : "Metadado inválido.";
-    await recordError(supabase, pair.media.id, message);
-    return;
+  let metadata: { tipo: PostType; fato: string | null; musica: string | null };
+  if (pair.metadata) {
+    let metadataText: string;
+    try {
+      const buffer = await downloadFileContent(drive, pair.metadata.id);
+      metadataText = buffer.toString("utf-8");
+    } catch (err) {
+      console.error("Falha ao baixar o metadado do Drive (tenta de novo depois):", err);
+      return;
+    }
+
+    try {
+      metadata = parseMetadata(metadataText, mediaType);
+    } catch (err) {
+      const message =
+        err instanceof InvalidMetadataError ? err.message : "Metadado inválido.";
+      await recordError(supabase, pair.media.id, message);
+      return;
+    }
+  } else {
+    // Sem .json: tenta extrair contexto do nome do arquivo antes de cair no
+    // fallback por tipo de mídia (vídeo se auto-analisa via
+    // lib/openai/videoAnalysis.ts quando source_fact é null; imagem sem
+    // contexto grava copy_generation_error explícito no cron generate-copy
+    // — ver docs/superpowers/specs/2026-07-14-drive-ingestao-sem-json-design.md).
+    metadata = {
+      tipo: "viral_geral",
+      fato: extractContextFromFilename(pair.media.name),
+      musica: null,
+    };
   }
 
   let mediaBuffer: Buffer;
@@ -158,7 +175,9 @@ export async function ingestFilePair(
 
   try {
     await moveToProcessed(drive, pair.media.id, processedFolderId, rootFolderId);
-    await moveToProcessed(drive, pair.metadata.id, processedFolderId, rootFolderId);
+    if (pair.metadata) {
+      await moveToProcessed(drive, pair.metadata.id, processedFolderId, rootFolderId);
+    }
   } catch (err) {
     console.error(
       "Falha ao mover arquivos para 'Processados' após criar o post (post já existe, não crítico):",
