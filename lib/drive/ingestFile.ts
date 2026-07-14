@@ -11,6 +11,31 @@ function mediaTypeFromMimeType(mimeType: string): "image" | "video" {
   return mimeType.startsWith("video/") ? "video" : "image";
 }
 
+const EXTENSION_BY_MIME_TYPE: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "video/mp4": "mp4",
+  "video/quicktime": "mov",
+  "video/webm": "webm",
+  "video/x-matroska": "mkv",
+};
+
+/**
+ * A extensão do nome do arquivo pode estar errada — o mimeType do Drive é
+ * quem reflete o conteúdo real (ver isMetadataFile em pairFiles.ts: alguém
+ * já renomeou uma mídia real pra "*.json" por engano nesta sessão, e sem
+ * essa checagem o objeto salvo no Storage teria ficado com a extensão
+ * ".json" apesar de ser um PNG/MP4 de verdade). Cai no nome do arquivo só
+ * quando o mimeType não está no mapa acima.
+ */
+function extensionFromMedia(file: { name: string; mimeType: string }): string {
+  return (
+    EXTENSION_BY_MIME_TYPE[file.mimeType] ?? file.name.split(".").pop() ?? "bin"
+  );
+}
+
 async function downloadFileContent(
   drive: drive_v3.Drive,
   fileId: string
@@ -114,7 +139,7 @@ export async function ingestFilePair(
     return;
   }
 
-  const extension = pair.media.name.split(".").pop() ?? "bin";
+  const extension = extensionFromMedia(pair.media);
   const storagePath = `${crypto.randomUUID()}.${extension}`;
   const { error: uploadError } = await supabase.storage
     .from("posts-media")

@@ -15,7 +15,19 @@ function baseName(fileName: string): string {
   return dotIndex === -1 ? fileName : fileName.slice(0, dotIndex);
 }
 
+/**
+ * O mimeType do Drive é reportado pelo conteúdo real do arquivo, nunca pelo
+ * nome — diferente da extensão, não pode ser "forjado" só renomeando o
+ * arquivo. Um arquivo de imagem/vídeo continua sendo mídia mesmo que
+ * alguém troque a extensão do nome pra ".json" por engano (confusão real
+ * observada 2x nesta sessão: renomear a própria mídia em vez de criar um
+ * segundo arquivo de texto separado) — só conta como metadado quando o
+ * mimeType não é de imagem/vídeo E o nome termina em ".json".
+ */
 function isMetadataFile(file: DriveFile): boolean {
+  if (file.mimeType.startsWith("image/") || file.mimeType.startsWith("video/")) {
+    return false;
+  }
   return file.name.toLowerCase().endsWith(".json");
 }
 
