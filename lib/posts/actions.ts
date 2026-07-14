@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
+import { extractContextFromFilename } from "@/lib/drive/filenameContext";
 import { generateCopyVariations, CopyGenerationError } from "@/lib/openai/generateCopy";
 import { renderArt, ArtRenderError } from "@/lib/renderer/renderArt";
 import { createClient } from "@/lib/supabase/server";
@@ -127,7 +128,7 @@ export async function createPostWithAI(
   const socialAccountId = String(formData.get("social_account_id") ?? "");
   const postType = String(formData.get("post_type") ?? "") as PostType;
   const templateRaw = String(formData.get("template") ?? "");
-  const context = String(formData.get("context") ?? "").trim();
+  const typedContext = String(formData.get("context") ?? "").trim();
 
   if (!socialAccountId || !postType) {
     return { error: "Preencha todos os campos obrigatórios." };
@@ -139,6 +140,11 @@ export async function createPostWithAI(
   }
 
   const mediaType = mediaTypeFromFile(mediaFile);
+
+  // Sem contexto digitado: tenta extrair do nome do arquivo antes de cair
+  // no fallback por tipo de mídia (mesma heurística da ingestão do Drive —
+  // ver docs/superpowers/specs/2026-07-14-drive-ingestao-sem-json-design.md).
+  const context = typedContext || extractContextFromFilename(mediaFile.name) || "";
 
   if (mediaType === "image" && !context) {
     return { error: "Digite o contexto da imagem para a IA escrever a legenda." };
