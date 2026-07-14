@@ -36,10 +36,15 @@ export async function GET(request: Request) {
       }
 
       if (status.status === "error") {
+        // Claim atômico: só grava "error" se o post ainda estiver "processing".
+        // Se outra invocação já resolveu este post primeiro, o update abaixo
+        // afeta 0 linhas — não há nada a fazer além de seguir adiante.
         await supabase
           .from("posts")
           .update({ video_render_status: "error", art_generation_error: status.error })
-          .eq("id", post.id);
+          .eq("id", post.id)
+          .eq("video_render_status", "processing")
+          .select("id");
         continue;
       }
 
@@ -50,24 +55,44 @@ export async function GET(request: Request) {
         .upload(artPath, videoBuffer, { contentType: "video/mp4", upsert: false });
 
       if (uploadError) {
+        // Mesmo claim atômico: se outra invocação já resolveu este post primeiro,
+        // este update afeta 0 linhas e não sobrescreve o estado vencedor.
         await supabase
           .from("posts")
           .update({ video_render_status: "error", art_generation_error: `Falha ao subir o vídeo renderizado: ${uploadError.message}` })
-          .eq("id", post.id);
+          .eq("id", post.id)
+          .eq("video_render_status", "processing")
+          .select("id");
         continue;
       }
 
-      await supabase
+      // Claim atômico: só grava "done" se o post ainda estiver "processing" no
+      // momento do update. Se outra invocação concorrente já resolveu este post
+      // primeiro, a cláusula .eq() abaixo faz o update afetar 0 linhas — detectamos
+      // isso pelo array `data` vazio e não contamos o post como resolvido por esta
+      // execução (evita nondeterminismo de qual upload "vence" como rendered_art_url).
+      const { data: claimed } = await supabase
         .from("posts")
         .update({ video_render_status: "done", rendered_art_url: artPath })
-        .eq("id", post.id);
+        .eq("id", post.id)
+        .eq("video_render_status", "processing")
+        .select("id");
+
+      if (!claimed || claimed.length === 0) {
+        // Outra invocação já marcou este post como resolvido primeiro — o upload
+        // feito aqui fica órfão no Storage, mas não sobrescrevemos o estado vencedor.
+        continue;
+      }
+
       resolved += 1;
     } catch (err) {
       const message = err instanceof RenderWorkerError ? err.message : "Erro inesperado ao resolver o render de vídeo.";
       await supabase
         .from("posts")
         .update({ video_render_status: "error", art_generation_error: message })
-        .eq("id", post.id);
+        .eq("id", post.id)
+        .eq("video_render_status", "processing")
+        .select("id");
     }
   }
 
