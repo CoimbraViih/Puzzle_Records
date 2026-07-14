@@ -4,8 +4,9 @@ export const DRIVE_OAUTH_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
 /**
  * Monta o cliente OAuth2 do Google (client id/secret/redirect da env), usado
- * tanto pra gerar a URL de consentimento (lib/drive/oauth.ts) quanto, aqui,
- * pra autenticar as chamadas de Drive com o refresh token já obtido.
+ * tanto pra gerar a URL de consentimento
+ * (app/api/admin/google-drive/authorize/route.ts) quanto, aqui, pra
+ * autenticar as chamadas de Drive com o refresh token já obtido.
  */
 export function createOAuth2Client() {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;

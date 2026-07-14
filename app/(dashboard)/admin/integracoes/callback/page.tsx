@@ -1,5 +1,8 @@
+import { cookies } from "next/headers";
+
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createOAuth2Client } from "@/lib/drive/client";
+import { GOOGLE_OAUTH_STATE_COOKIE } from "@/app/api/admin/google-drive/authorize/route";
 import { PageHeader } from "@/components/dashboard/page-header";
 
 export const dynamic = "force-dynamic";
@@ -12,10 +15,16 @@ async function requireAdmin() {
 export default async function GoogleDriveCallbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ code?: string; error?: string }>;
+  searchParams: Promise<{ code?: string; error?: string; state?: string }>;
 }) {
   const admin = await requireAdmin();
-  const { code, error: googleError } = await searchParams;
+  const { code, error: googleError, state } = await searchParams;
+
+  const cookieStore = await cookies();
+  // Server Components não conseguem apagar cookies — só leitura/comparação;
+  // o cookie expira sozinho em 10 min (maxAge definido no route de authorize).
+  const expectedState = cookieStore.get(GOOGLE_OAUTH_STATE_COOKIE)?.value;
+  const stateIsValid = Boolean(state) && Boolean(expectedState) && state === expectedState;
 
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-10 md:px-8">
@@ -33,13 +42,19 @@ export default async function GoogleDriveCallbackPage({
         </p>
       )}
 
+      {admin && !googleError && code && !stateIsValid && (
+        <p className="text-sm text-destructive">
+          Falha de segurança: state inválido ou ausente. Tente conectar novamente.
+        </p>
+      )}
+
       {admin && !googleError && !code && (
         <p className="text-sm text-destructive">
           Código de autorização ausente na URL de retorno do Google.
         </p>
       )}
 
-      {admin && !googleError && code && <ExchangeResult code={code} />}
+      {admin && !googleError && code && stateIsValid && <ExchangeResult code={code} />}
     </div>
   );
 }
