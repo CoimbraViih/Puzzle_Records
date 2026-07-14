@@ -5,6 +5,7 @@ import {
   Library,
   LayoutDashboard,
   LayoutGrid,
+  Plug,
   Share2,
   Shield,
   Users,
@@ -77,6 +78,12 @@ const NAV_GROUPS: NavGroup[] = [
         title: "Contas sociais",
         url: "/admin/contas",
         icon: Share2,
+        roles: ["admin"],
+      },
+      {
+        title: "Integrações",
+        url: "/admin/integracoes",
+        icon: Plug,
         roles: ["admin"],
       },
       {
