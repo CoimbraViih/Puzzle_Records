@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import {
   approvePost,
   deletePost,
@@ -251,9 +252,13 @@ export function PostCard({
 
         {canDelete(post, role, currentUserId) && (
           <form action={deletePost.bind(null, post.id)}>
-            <Button type="submit" variant="ghost" size="sm">
+            <ConfirmSubmitButton
+              variant="ghost"
+              size="sm"
+              confirmMessage="Excluir este post? Essa ação não pode ser desfeita."
+            >
               Excluir
-            </Button>
+            </ConfirmSubmitButton>
           </form>
         )}
 

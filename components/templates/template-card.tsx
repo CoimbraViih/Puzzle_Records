@@ -14,7 +14,7 @@ export function TemplateCard({ template }: { template: VideoTemplate }) {
       <div className="flex items-center justify-between">
         <h3 className="font-medium">{template.name}</h3>
         {template.is_default && (
-          <span className="rounded bg-[#96DB12] px-2 py-0.5 text-xs font-semibold text-black">Default</span>
+          <span className="rounded bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">Default</span>
         )}
       </div>
       <dl className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-muted-foreground">

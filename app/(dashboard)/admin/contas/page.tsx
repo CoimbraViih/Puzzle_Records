@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { listSocialAccounts } from "@/lib/posts/queries";
 import { SOCIAL_NETWORK_LABELS } from "@/lib/types/social-account";
 
@@ -11,8 +13,8 @@ export default async function ContasPage() {
   const accounts = await listSocialAccounts();
 
   return (
-    <div className="flex flex-1 flex-col gap-8 px-6 py-16">
-      <h1 className="text-2xl font-semibold text-foreground">Contas sociais</h1>
+    <div className="flex flex-1 flex-col gap-6 px-6 py-10 md:px-8">
+      <PageHeader title="Contas sociais" />
 
       <SocialAccountForm />
 
@@ -69,9 +71,13 @@ export default async function ContasPage() {
               </td>
               <td className="py-2 text-right">
                 <form action={deleteSocialAccount.bind(null, account.id)}>
-                  <Button type="submit" variant="ghost" size="sm">
+                  <ConfirmSubmitButton
+                    variant="ghost"
+                    size="sm"
+                    confirmMessage="Excluir esta conta social? Posts vinculados deixarão de referenciá-la."
+                  >
                     Excluir
-                  </Button>
+                  </ConfirmSubmitButton>
                 </form>
               </td>
             </tr>

@@ -3,6 +3,12 @@
 import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { createPostWithAI, type PostFormState } from "@/lib/posts/actions";
 import {
   POST_TEMPLATES,
@@ -42,28 +48,19 @@ export function QuickPostDialog({
   }
 
   return (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen(true)}
-      >
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button type="button" variant="outline" size="sm" />}>
         Post rápido
-      </Button>
+      </DialogTrigger>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-background p-6">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">
-              Post rápido
-            </h2>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Envie a mídia direto pelo painel — a IA gera a manchete e a
-              legenda automaticamente.
-            </p>
+      <DialogContent>
+        <DialogTitle>Post rápido</DialogTitle>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Envie a mídia direto pelo painel — a IA gera a manchete e a
+          legenda automaticamente.
+        </p>
 
-            <form action={formAction} className="flex flex-col gap-4">
+        <form action={formAction} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="quick_social_account_id"
@@ -203,9 +200,7 @@ export function QuickPostDialog({
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

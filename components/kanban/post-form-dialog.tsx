@@ -3,6 +3,12 @@
 import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { createPost, updatePost, type PostFormState } from "@/lib/posts/actions";
 import {
   POST_TEMPLATES,
@@ -47,24 +53,15 @@ export function PostFormDialog({
   }
 
   return (
-    <>
-      <Button
-        type="button"
-        variant={triggerVariant}
-        size="sm"
-        onClick={() => setOpen(true)}
-      >
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button type="button" variant={triggerVariant} size="sm" />}>
         {triggerLabel}
-      </Button>
+      </DialogTrigger>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-background p-6">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">
-              {mode === "create" ? "Novo post" : "Editar post"}
-            </h2>
+      <DialogContent>
+        <DialogTitle>{mode === "create" ? "Novo post" : "Editar post"}</DialogTitle>
 
-            <form action={formAction} className="flex flex-col gap-4">
+        <form action={formAction} className="flex flex-col gap-4">
               {mode === "edit" && post && (
                 <input type="hidden" name="post_id" value={post.id} />
               )}
@@ -227,9 +224,7 @@ export function PostFormDialog({
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

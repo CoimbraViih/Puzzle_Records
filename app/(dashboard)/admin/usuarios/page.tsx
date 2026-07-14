@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/types/profile";
 
 export const dynamic = "force-dynamic";
@@ -56,8 +57,8 @@ export default function UsuariosPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 px-6 py-16">
-      <h1 className="text-2xl font-semibold text-foreground">Usuários</h1>
+    <div className="flex flex-1 flex-col gap-6 px-6 py-10 md:px-8">
+      <PageHeader title="Usuários" />
 
       <form onSubmit={handleInvite} className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1.5">

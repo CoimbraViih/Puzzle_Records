@@ -3,6 +3,12 @@
 import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { createAcervoPost, type AcervoFormState } from "@/lib/acervo/actions";
 import type { SocialAccount } from "@/lib/types/social-account";
 
@@ -32,19 +38,15 @@ export function AcervoFormDialog({
   }
 
   return (
-    <>
-      <Button type="button" size="sm" onClick={() => setOpen(true)}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button type="button" size="sm" />}>
         Adicionar ao acervo
-      </Button>
+      </DialogTrigger>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-background p-6">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">
-              Adicionar ao acervo
-            </h2>
+      <DialogContent>
+        <DialogTitle>Adicionar ao acervo</DialogTitle>
 
-            <form action={formAction} className="flex flex-col gap-4">
+        <form action={formAction} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="social_account_id"
@@ -125,9 +127,7 @@ export function AcervoFormDialog({
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

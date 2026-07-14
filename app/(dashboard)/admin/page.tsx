@@ -7,7 +7,7 @@ export default async function AdminPage() {
   const profile = await getCurrentProfile();
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-24 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-10 text-center md:px-8">
       <span className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium tracking-wide text-primary uppercase">
         {profile ? ROLE_LABELS[profile.role] : "Admin"}
       </span>

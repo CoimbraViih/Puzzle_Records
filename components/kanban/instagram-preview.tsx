@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
-
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import type { PostWithRelations } from "@/lib/types/post";
 
 const IG_PLACEHOLDER_AVATAR =
@@ -98,48 +102,22 @@ export function InstagramPreview({ post }: { post: PostWithRelations }) {
 }
 
 /**
- * Botão "Ver preview" + modal. O projeto não tem um primitivo shadcn/ui
- * `Dialog` (`components/ui/dialog.tsx` não existe — só `Sheet`, que é um
- * painel lateral com API diferente). Por isso este componente segue o
- * mesmo padrão manual (useState + overlay fixo, sem fechar ao clicar no
- * backdrop) já usado em `reject-dialog.tsx` e `post-form-dialog.tsx`, em
- * vez do exemplo ilustrativo do brief que assumia um `Dialog` shadcn/ui.
+ * Botão "Ver preview" + modal, usando o primitivo `Dialog` (`@base-ui/react`,
+ * mesma base já usada pelo `Sheet`) — dá escape-to-close, focus trap e
+ * `aria-modal` de graça, sem precisar de estado manual de abertura.
  */
 export function InstagramPreviewDialog({ post }: { post: PostWithRelations }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={() => setOpen(true)}
-      >
+    <Dialog>
+      <DialogTrigger render={<Button type="button" size="sm" variant="outline" />}>
         Ver preview
-      </Button>
+      </DialogTrigger>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
-          <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-lg border border-border bg-background p-6">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">
-              Preview do post
-            </h2>
+      <DialogContent className="max-w-sm">
+        <DialogTitle>Preview do post</DialogTitle>
 
-            <InstagramPreview post={post} />
-
-            <div className="mt-4 flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+        <InstagramPreview post={post} />
+      </DialogContent>
+    </Dialog>
   );
 }

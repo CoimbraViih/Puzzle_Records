@@ -2,6 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { createTemplate, updateTemplate } from "@/lib/templates/actions";
 import type { VideoTemplate } from "@/lib/types/template";
 
@@ -34,23 +40,15 @@ export function TemplateFormDialog({ mode, template }: TemplateFormDialogProps) 
   }
 
   return (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen(true)}
-      >
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button type="button" variant="outline" size="sm" />}>
         {mode === "create" ? "Novo template" : "Editar"}
-      </Button>
+      </DialogTrigger>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <form
-            action={handleSubmit}
-            className="flex w-full max-w-md flex-col gap-3 rounded-lg border border-border bg-card p-6"
-          >
-            <h2 className="font-medium">{mode === "create" ? "Novo template" : `Editar ${template?.name}`}</h2>
+      <DialogContent className="max-w-md">
+        <DialogTitle>{mode === "create" ? "Novo template" : `Editar ${template?.name}`}</DialogTitle>
+
+        <form action={handleSubmit} className="flex flex-col gap-3">
 
             <label className="text-sm">
               Nome
@@ -128,18 +126,12 @@ export function TemplateFormDialog({ mode, template }: TemplateFormDialogProps) 
               <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={isPending}
-                className="bg-[#96DB12] text-black hover:bg-[#96DB12]/80"
-              >
+              <Button type="submit" size="sm" disabled={isPending}>
                 {isPending ? "Salvando..." : "Salvar"}
               </Button>
             </div>
-          </form>
-        </div>
-      )}
-    </>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
