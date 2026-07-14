@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { Button } from "@/components/ui/button";
 import { duplicateTemplate } from "@/lib/templates/actions";
 import { TemplateFormDialog } from "./template-form-dialog";
 import type { VideoTemplate } from "@/lib/types/template";
@@ -28,14 +29,15 @@ export function TemplateCard({ template }: { template: VideoTemplate }) {
       </dl>
       <div className="flex gap-2">
         <TemplateFormDialog mode="edit" template={template} />
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           disabled={isPending}
           onClick={() => startTransition(() => void duplicateTemplate(template.id))}
-          className="rounded border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-50"
         >
           Duplicar
-        </button>
+        </Button>
       </div>
     </div>
   );

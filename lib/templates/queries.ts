@@ -17,6 +17,7 @@ export async function listVideoTemplates(): Promise<VideoTemplate[]> {
   return (data as VideoTemplate[]) ?? [];
 }
 
+// Sem chamador atual no código — mantida para uso futuro em contexto autenticado (ex.: view de detalhe de template).
 export async function getDefaultVideoTemplate(): Promise<VideoTemplate | null> {
   const supabase = await createClient();
   const { data, error } = await supabase

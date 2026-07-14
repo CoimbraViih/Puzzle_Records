@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
 import { createTemplate, updateTemplate } from "@/lib/templates/actions";
 import type { VideoTemplate } from "@/lib/types/template";
 
@@ -34,13 +35,14 @@ export function TemplateFormDialog({ mode, template }: TemplateFormDialogProps) 
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
         onClick={() => setOpen(true)}
-        className="rounded border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
       >
         {mode === "create" ? "Novo template" : "Editar"}
-      </button>
+      </Button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -123,12 +125,17 @@ export function TemplateFormDialog({ mode, template }: TemplateFormDialogProps) 
             {error && <p className="text-xs text-destructive">{error}</p>}
 
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setOpen(false)} className="rounded px-3 py-1.5 text-xs">
+              <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
                 Cancelar
-              </button>
-              <button type="submit" disabled={isPending} className="rounded bg-[#96DB12] px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-50">
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isPending}
+                className="bg-[#96DB12] text-black hover:bg-[#96DB12]/80"
+              >
                 {isPending ? "Salvando..." : "Salvar"}
-              </button>
+              </Button>
             </div>
           </form>
         </div>

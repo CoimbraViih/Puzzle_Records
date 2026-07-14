@@ -28,4 +28,15 @@ describe("createJobStore", () => {
     const store = createJobStore();
     expect(store.get("inexistente")).toBeUndefined();
   });
+
+  it("delete remove o job do store depois de done", async () => {
+    const store = createJobStore();
+    const jobId = store.create();
+
+    await store.run(jobId, async () => "path/output.mp4");
+    expect(store.get(jobId)).toEqual({ status: "done", outputUrl: "path/output.mp4" });
+
+    store.delete(jobId);
+    expect(store.get(jobId)).toBeUndefined();
+  });
 });

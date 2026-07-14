@@ -9,6 +9,7 @@ export interface JobStore {
   create(): string;
   get(jobId: string): JobRecord | undefined;
   run(jobId: string, task: () => Promise<string>): Promise<void>;
+  delete(jobId: string): void;
 }
 
 /**
@@ -42,6 +43,9 @@ export function createJobStore(): JobStore {
           error: err instanceof Error ? err.message : "erro desconhecido no render",
         });
       }
+    },
+    delete(jobId: string): void {
+      jobs.delete(jobId);
     },
   };
 }

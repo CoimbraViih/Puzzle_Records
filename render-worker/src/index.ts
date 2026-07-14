@@ -53,11 +53,18 @@ app.get("/render/:jobId", (req, res) => {
   }
 
   if (record.status === "done") {
+    jobStore.delete(req.params.jobId);
     res.json({ status: "done", videoBase64: record.outputUrl });
     return;
   }
 
-  res.json(record.status === "error" ? { status: "error", error: record.error } : { status: "processing" });
+  if (record.status === "error") {
+    jobStore.delete(req.params.jobId);
+    res.json({ status: "error", error: record.error });
+    return;
+  }
+
+  res.json({ status: "processing" });
 });
 
 const port = process.env.PORT ?? 8080;
