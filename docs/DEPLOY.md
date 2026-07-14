@@ -151,7 +151,7 @@ minutos (e as de 30 min, dentro do mesmo workflow). Para ativar:
 
 1. No GitHub, **Settings → Secrets and variables → Actions** do repositório:
    - Aba **Secrets** → **New repository secret** → nome `CRON_SECRET`, valor igual ao
-     configurado na Vercel (passo 6 acima).
+     `CRON_SECRET` que você configurou na Vercel anteriormente.
    - Aba **Variables** → **New repository variable** → nome `SITE_URL`, valor a URL de
      produção do deploy (ex: `https://puzzle-records.vercel.app`, sem barra no final).
 2. O workflow já está no repo e ativa sozinho a partir do primeiro push na `main` — não
