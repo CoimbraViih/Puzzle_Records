@@ -7,7 +7,7 @@ export interface DriveFile {
 export interface FilePair {
   baseName: string;
   media: DriveFile;
-  metadata: DriveFile;
+  metadata?: DriveFile;
 }
 
 function baseName(fileName: string): string {
@@ -20,9 +20,10 @@ function isMetadataFile(file: DriveFile): boolean {
 }
 
 /**
- * Agrupa arquivos por nome-base e retorna só os pares completos (1 mídia +
- * 1 .json). Arquivos sem par ainda (só a mídia ou só o json soltos) são
- * ignorados — ficam pra próxima execução do cron, quando o par completar.
+ * Agrupa arquivos por nome-base. Mídia sozinha (sem `.json`) já é um item
+ * válido — `metadata` fica `undefined` e quem consome decide o fallback (ver
+ * `ingestFile.ts`). Um `.json` órfão, sem mídia com o mesmo nome, continua sem
+ * sentido e é ignorado.
  */
 export function pairFiles(files: DriveFile[]): FilePair[] {
   const groups = new Map<string, { media?: DriveFile; metadata?: DriveFile }>();
@@ -40,7 +41,7 @@ export function pairFiles(files: DriveFile[]): FilePair[] {
 
   const pairs: FilePair[] = [];
   for (const [name, group] of groups) {
-    if (group.media && group.metadata) {
+    if (group.media) {
       pairs.push({ baseName: name, media: group.media, metadata: group.metadata });
     }
   }
