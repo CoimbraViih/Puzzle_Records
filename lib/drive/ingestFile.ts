@@ -135,6 +135,21 @@ export async function ingestFilePair(
     .insert({ drive_file_id: pair.media.id, post_id: post.id, status: "processado" });
 
   if (ingestionInsertError) {
+    if (ingestionInsertError.code === "23505") {
+      // Índice único parcial de drive_ingestions_file_id_processed_idx
+      // (migration 0018) barrou: outra execução do cron já processou
+      // esse mesmo arquivo do Drive nesse meio-tempo (janela entre o
+      // check "já processado" no início desta função e este insert).
+      // Desfaz o post/mídia duplicados que esta execução criou, em vez
+      // de deixar os dois.
+      console.error(
+        "Corrida detectada na ingestão do Drive (outra execução já processou este arquivo) — desfazendo post duplicado:",
+        pair.media.id
+      );
+      await supabase.from("posts").delete().eq("id", post.id);
+      await supabase.storage.from("posts-media").remove([storagePath]);
+      return;
+    }
     console.error(
       "Falha ao registrar drive_ingestions 'processado' (post já existe, risco de duplicar se o move também falhar):",
       ingestionInsertError

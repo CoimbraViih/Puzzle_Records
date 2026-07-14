@@ -5,6 +5,20 @@ import { getDefaultVideoTemplateForCron } from "@/lib/templates/queries";
 import { transcribeWithWordTimestamps, VideoAnalysisError } from "@/lib/openai/videoAnalysis";
 import { submitRenderJob, RenderWorkerError } from "@/lib/renderWorker/client";
 
+// Baixa o vídeo original + transcreve via Whisper (mesmo custo de tempo que
+// justificou maxDuration=300 no cron generate-copy, ver ali) antes de
+// submeter o job de render — sem isso a função é derrubada pelo limite
+// padrão da Vercel (10-15s) no meio da transcrição, e o post nunca sai do
+// estado "pendente de render de vídeo" (nenhum erro é gravado, porque a
+// função é encerrada abruptamente antes do catch rodar).
+export const maxDuration = 300;
+
+// Mesmo raciocínio do generate-copy: o loop abaixo é sequencial e cada vídeo
+// (download + Whisper) pode levar 20-60s — 2-3 pendentes no mesmo ciclo
+// excederiam maxDuration=300. Vídeos além do limite ficam pendentes pro
+// próximo ciclo (5 min depois), sem gravar erro.
+const MAX_VIDEOS_PER_RUN = 3;
+
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
@@ -39,7 +53,7 @@ export async function GET(request: Request) {
   const supabase = createServiceClient();
   let submitted = 0;
 
-  for (const post of pending) {
+  for (const post of pending.slice(0, MAX_VIDEOS_PER_RUN)) {
     try {
       const { data: signedUrlData, error: signError } = await supabase.storage
         .from("posts-media")
