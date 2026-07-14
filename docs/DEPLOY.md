@@ -64,7 +64,10 @@ mesmos nomes:
 - `NEXT_PUBLIC_SITE_URL`
 - `OPENAI_API_KEY`
 - `ZERNIO_API_KEY`
-- `GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY`
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `GOOGLE_OAUTH_REDIRECT_URI`
+- `GOOGLE_OAUTH_REFRESH_TOKEN`
 - `GOOGLE_DRIVE_FOLDER_ID`
 - `CRON_SECRET`
 
@@ -108,25 +111,36 @@ visualmente pelo status de conexão na página inicial.
    - A partir daí, esse admin consegue convidar os demais usuários direto
      pela tela `/admin/usuarios` do painel.
 
-## Pós-M3: Service Account do Drive e cron de ingestão
+## Pós-M3 (atualizado 14/07/2026): OAuth do Drive e cron de ingestão
 
 1. No [Google Cloud Console](https://console.cloud.google.com), crie (ou reaproveite) um
-   projeto, ative a **Google Drive API** e crie uma **Service Account** em
-   **IAM & Admin > Service Accounts**.
-2. Gere uma chave JSON para essa service account (**Keys > Add Key > JSON**) e baixe o
-   arquivo.
-3. Compartilhe a pasta do Drive usada para ingestão com o e-mail `client_email` do JSON
-   (papel **Editor**).
-4. Copie o conteúdo do JSON inteiro, em uma linha só, para `GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY`
-   no `.env.local` e nas env vars da Vercel.
-5. Preencha `GOOGLE_DRIVE_FOLDER_ID` com o ID da pasta (parte final da URL do Drive).
-6. Gere um valor aleatório para `CRON_SECRET` (ex: `openssl rand -hex 32`) e configure na
-   Vercel — é o mesmo valor usado pelo GitHub Actions (passo abaixo) pra autenticar as
-   chamadas às rotas de cron.
-7. Aplique a migration do M3:
-   ```
-   npx supabase db push
-   ```
+   projeto e ative a **Google Drive API** (**APIs e serviços > Biblioteca**).
+2. Em **APIs e serviços > Credenciais > Criar credenciais > ID do cliente OAuth**, tipo
+   **Aplicativo da Web**. Em **Authorized redirect URIs**, cadastre a URL de callback do
+   ambiente (local: `http://localhost:3000/admin/integracoes/callback`; produção:
+   `https://<seu-domínio>/admin/integracoes/callback` — pode cadastrar as duas no mesmo
+   client).
+3. Na tela de consentimento OAuth do projeto, deixe o status como **"Production"** (não
+   "Testing") — em "Testing" o Google expira o refresh token em 7 dias.
+4. Copie o **Client ID** e o **Client Secret** gerados para `GOOGLE_OAUTH_CLIENT_ID` e
+   `GOOGLE_OAUTH_CLIENT_SECRET` no `.env.local` e nas env vars da Vercel.
+5. Preencha `GOOGLE_OAUTH_REDIRECT_URI` com a mesma URL cadastrada no passo 2 (o valor de
+   dev e o de produção são diferentes — cada ambiente usa o seu).
+6. Preencha `GOOGLE_DRIVE_FOLDER_ID` com o ID da pasta (parte final da URL do Drive) —
+   como agora é a sua própria conta Google acessando, não precisa mais compartilhar a
+   pasta com ninguém.
+7. Faça login no painel como admin, acesse **Administração > Integrações**
+   (`/admin/integracoes`) e clique em **Conectar Google Drive** — autorize no Google.
+8. A página de retorno mostra o **refresh token** uma única vez — copie e cole em
+   `GOOGLE_OAUTH_REFRESH_TOKEN` no `.env.local`/env vars da Vercel, depois faça um novo
+   deploy (ou reinicie `npm run dev` localmente).
+9. Gere um valor aleatório para `CRON_SECRET` (ex: `openssl rand -hex 32`) e configure na
+   Vercel — é o mesmo valor usado pelo GitHub Actions pra autenticar as chamadas às
+   rotas de cron (ver seção de agendamento mais abaixo).
+10. Aplique a migration do M3, se ainda não aplicada:
+    ```
+    npx supabase db push
+    ```
 
 ## Pós-M11 (14/07/2026): agendamento via GitHub Actions, não Vercel Cron
 
