@@ -1,0 +1,58 @@
+name: Disparar crons do painel
+
+# Substitui o Vercel Cron (vercel.json), removido porque o plano Hobby só
+# permite 2 cron jobs por projeto, no máximo 1x por dia -- o app precisa de
+# 8 rotas, a maioria a cada 5 ou 30 minutos. Ver docs/DEPLOY.md e PLAN.md
+# (M11) para o contexto completo dessa decisão e o risco aceito de limite de
+# 60s por função no Hobby (generate-copy/generate-video-art, que processam
+# vídeo, podem estourar esse limite em clipes maiores -- migrar pro plano
+# Pro da Vercel remove os dois limites de uma vez, se isso virar dor real).
+#
+# GitHub Actions não garante o minuto exato de disparo de um schedule sob
+# carga (mesmo aviso que o Vercel Cron já tinha) -- aceitável pro estágio
+# atual do projeto, mesmo padrão de tolerância já usado nos outros crons.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checar se é ciclo de 30 minutos
+        id: minute
+        run: |
+          minute=$(date -u +%M)
+          if [ "$((10#$minute % 30))" -eq 0 ]; then
+            echo "is_half_hour=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_half_hour=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Chamar crons de 5 em 5 minutos
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          for path in drive-ingest generate-copy generate-art generate-video-art poll-video-render publish-scheduled; do
+            echo "== $path =="
+            curl -sS -o /dev/null -w "status=%{http_code}\n" \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              "$SITE_URL/api/cron/$path" \
+              || echo "::warning::falha ao chamar $path"
+          done
+
+      - name: Chamar crons de 30 em 30 minutos
+        if: github.event_name == 'workflow_dispatch' || steps.minute.outputs.is_half_hour == 'true'
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          for path in acervo-schedule collect-metrics; do
+            echo "== $path =="
+            curl -sS -o /dev/null -w "status=%{http_code}\n" \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              "$SITE_URL/api/cron/$path" \
+              || echo "::warning::falha ao chamar $path"
+          done

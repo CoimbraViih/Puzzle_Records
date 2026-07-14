@@ -121,10 +121,30 @@ visualmente pelo status de conexão na página inicial.
    no `.env.local` e nas env vars da Vercel.
 5. Preencha `GOOGLE_DRIVE_FOLDER_ID` com o ID da pasta (parte final da URL do Drive).
 6. Gere um valor aleatório para `CRON_SECRET` (ex: `openssl rand -hex 32`) e configure na
-   Vercel — isso ativa a proteção automática das chamadas de cron da própria Vercel.
+   Vercel — é o mesmo valor usado pelo GitHub Actions (passo abaixo) pra autenticar as
+   chamadas às rotas de cron.
 7. Aplique a migration do M3:
    ```
    npx supabase db push
    ```
-8. Depois do próximo deploy, o cron `/api/cron/drive-ingest` passa a rodar a cada 5
-   minutos automaticamente (agendado em `vercel.json`) — sem nenhum passo manual adicional.
+
+## Pós-M11 (14/07/2026): agendamento via GitHub Actions, não Vercel Cron
+
+O plano Hobby da Vercel só permite 2 cron jobs por projeto (máx. 1x/dia) — insuficiente
+para as 8 rotas `/api/cron/*` do projeto. `vercel.json` não declara `crons`; um workflow
+agendado (`.github/workflows/cron-trigger.yml`) chama essas rotas via HTTP a cada 5
+minutos (e as de 30 min, dentro do mesmo workflow). Para ativar:
+
+1. No GitHub, **Settings → Secrets and variables → Actions** do repositório:
+   - Aba **Secrets** → **New repository secret** → nome `CRON_SECRET`, valor igual ao
+     configurado na Vercel (passo 6 acima).
+   - Aba **Variables** → **New repository variable** → nome `SITE_URL`, valor a URL de
+     produção do deploy (ex: `https://puzzle-records.vercel.app`, sem barra no final).
+2. O workflow já está no repo e ativa sozinho a partir do primeiro push na `main` — não
+   precisa rodar nada manualmente. Pra testar sem esperar o agendamento, vá em **Actions →
+   Disparar crons do painel → Run workflow**.
+3. **Limite aceito por ora**: o Hobby também limita funções a 60s de execução (Pro permite
+   até 300s). `generate-copy`/`generate-video-art` processam vídeo com Whisper e podem
+   estourar esse teto em clipes maiores — ver `docs/CLAUDE.md` e `PLAN.md` (M11). Migrar
+   pra Pro (~US$20/mês) remove os dois limites (crons e duração) de uma vez, se virar dor
+   operacional real.
