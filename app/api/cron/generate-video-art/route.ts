@@ -37,21 +37,33 @@ async function recordError(postId: string, message: string) {
 }
 
 /**
- * Sem template de vídeo padrão configurado, o motor de render (Remotion,
- * M14) simplesmente não existe ainda — publica o vídeo bruto em vez de
- * travar o post pra sempre em "aprovado" sem nenhum erro visível
- * (comportamento observado num teste real: rendered_art_url nunca era
- * preenchido e o post nunca ficava elegível em pendingPublish.ts). Assim
- * que um template default existir, esse fallback para de ser usado.
+ * O motor de render real (Remotion, M14) exige tanto um template default
+ * quanto transcrição com timestamps por palavra via Whisper da OpenAI —
+ * indisponível hoje sem template configurado e/ou rodando no fallback
+ * OpenRouter (que não suporta response_format "verbose_json", ver
+ * lib/openai/videoAnalysis.ts). Sem esse fallback, qualquer uma dessas
+ * duas falhas trava o post pra sempre em "aprovado" sem nenhum erro
+ * visível (rendered_art_url nunca preenchido = nunca elegível em
+ * pendingPublish.ts, e listPostsPendingVideoArt já exclui posts com
+ * art_generation_error, então não há retry automático mesmo). Publica o
+ * vídeo bruto em vez disso — assim que o pipeline real funcionar de novo
+ * (template configurado + chave OpenAI real), esse fallback para de ser
+ * necessário porque o post nunca mais entra em erro.
  */
-async function fallbackToRawVideo(supabase: ReturnType<typeof createServiceClient>, postId: string, mediaUrl: string) {
+async function fallbackToRawVideo(
+  supabase: ReturnType<typeof createServiceClient>,
+  postId: string,
+  mediaUrl: string,
+  reason: string
+) {
+  console.error(`[generate-video-art] caindo pro vídeo bruto no post ${postId} (${reason})`);
   const { error } = await supabase
     .from("posts")
     .update({ rendered_art_url: mediaUrl })
     .eq("id", postId);
   if (error) {
     console.error(`[generate-video-art] falha ao gravar fallback de vídeo bruto do post ${postId}:`, error.message);
-    await recordError(postId, `Falha ao aplicar fallback de vídeo sem template: ${error.message}`);
+    await recordError(postId, `Falha ao aplicar fallback de vídeo (${reason}): ${error.message}`);
   }
 }
 
@@ -69,12 +81,13 @@ export async function GET(request: Request) {
 
   if (!template) {
     for (const post of pending) {
-      await fallbackToRawVideo(supabase, post.id, post.media_url);
+      await fallbackToRawVideo(supabase, post.id, post.media_url, "nenhum template de vídeo default configurado");
     }
     return NextResponse.json({ submitted: 0, fallbackRawVideo: pending.length, total: pending.length });
   }
 
   let submitted = 0;
+  let fallbackRawVideo = 0;
 
   for (const post of pending.slice(0, MAX_VIDEOS_PER_RUN)) {
     try {
@@ -117,9 +130,10 @@ export async function GET(request: Request) {
         err instanceof VideoAnalysisError || err instanceof RenderWorkerError
           ? err.message
           : "Erro inesperado ao submeter o render de vídeo.";
-      await recordError(post.id, message);
+      await fallbackToRawVideo(supabase, post.id, post.media_url, message);
+      fallbackRawVideo += 1;
     }
   }
 
-  return NextResponse.json({ submitted, total: pending.length });
+  return NextResponse.json({ submitted, fallbackRawVideo, total: pending.length });
 }
