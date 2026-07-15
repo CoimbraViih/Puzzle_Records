@@ -1,6 +1,7 @@
 import { FileVideo } from "lucide-react";
 
 import { GenerateCaptionButton } from "@/components/drive/generate-caption-button";
+import { SendToApprovalButton } from "@/components/drive/send-to-approval-button";
 import type { DriveItemRow } from "@/lib/drive/queries";
 
 const EDIT_STATUS_LABEL: Record<DriveItemRow["edit_status"], string> = {
@@ -39,6 +40,7 @@ export function DriveItemCard({ item }: { item: DriveItemRow }) {
           {item.caption ? (
             <p className="line-clamp-3 text-xs text-foreground">{item.caption}</p>
           ) : null}
+          {item.caption ? <SendToApprovalButton driveItemId={item.id} /> : null}
         </>
       ) : null}
     </div>
