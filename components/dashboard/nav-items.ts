@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays,
   CheckSquare,
+  FolderOpen,
   Library,
   LayoutDashboard,
   LayoutGrid,
@@ -43,6 +44,12 @@ const NAV_GROUPS: NavGroup[] = [
         title: "Fila de posts",
         url: "/conteudo",
         icon: LayoutGrid,
+        roles: ["admin", "aprovador", "equipe_conteudo"],
+      },
+      {
+        title: "Drive",
+        url: "/drive",
+        icon: FolderOpen,
         roles: ["admin", "aprovador", "equipe_conteudo"],
       },
       {
