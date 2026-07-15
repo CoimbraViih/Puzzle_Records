@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { utcIsoToSpDateTimeLocal } from "@/lib/calendar/timezone";
 import { createPost, updatePost, type PostFormState } from "@/lib/posts/actions";
 import {
   POST_TEMPLATES,
@@ -202,7 +203,11 @@ export function PostFormDialog({
                   id="scheduled_at"
                   name="scheduled_at"
                   type="datetime-local"
-                  defaultValue={post?.scheduled_at?.slice(0, 16) ?? ""}
+                  defaultValue={
+                    post?.scheduled_at
+                      ? utcIsoToSpDateTimeLocal(post.scheduled_at)
+                      : ""
+                  }
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                 />
               </div>

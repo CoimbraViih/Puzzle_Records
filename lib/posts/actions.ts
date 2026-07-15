@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
+import { spDateTimeLocalToUtcIso } from "@/lib/calendar/timezone";
 import { extractContextFromFilename } from "@/lib/drive/filenameContext";
 import { generateCopyVariations, CopyGenerationError } from "@/lib/openai/generateCopy";
 import { renderArt, ArtRenderError } from "@/lib/renderer/renderArt";
@@ -24,6 +25,17 @@ function revalidatePostPages() {
   revalidatePath("/admin");
 }
 
+/**
+ * O input é um `<input type="datetime-local">` sem fuso, sempre rotulado
+ * na UI como horário de São Paulo (ver /calendario) — precisa virar UTC
+ * antes de gravar, senão o cron de publicação (que compara em UTC) trata
+ * o horário como se já tivesse passado (ver lib/posts/pendingPublish.ts).
+ */
+function readScheduledAt(formData: FormData): string | null {
+  const raw = (formData.get("scheduled_at") as string) || "";
+  return raw ? spDateTimeLocalToUtcIso(raw) : null;
+}
+
 function readPostFields(formData: FormData) {
   return {
     social_account_id: String(formData.get("social_account_id") ?? ""),
@@ -31,7 +43,7 @@ function readPostFields(formData: FormData) {
     post_type: String(formData.get("post_type") ?? "") as PostType,
     headline: String(formData.get("headline") ?? "").trim(),
     caption: String(formData.get("caption") ?? "").trim(),
-    scheduled_at: (formData.get("scheduled_at") as string) || null,
+    scheduled_at: readScheduledAt(formData),
   };
 }
 
