@@ -1,5 +1,6 @@
 import express from "express";
 import { readFile, unlink } from "node:fs/promises";
+import { isAllowedTransferHost, relayUploadToCutPro } from "./cutproTransfer";
 import { createJobStore } from "./jobs";
 import { renderVideoJob, type RenderJobInput } from "./render";
 
@@ -65,6 +66,52 @@ app.get("/render/:jobId", (req, res) => {
   }
 
   res.json({ status: "processing" });
+});
+
+app.post("/transfer/upload-to-cutpro", (req, res) => {
+  if (!isAuthorized(req)) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const { sourceUrl, uploadUrl } = req.body as { sourceUrl?: string; uploadUrl?: string };
+  if (!sourceUrl || !uploadUrl) {
+    res.status(400).json({ error: "sourceUrl e uploadUrl são obrigatórios" });
+    return;
+  }
+  relayUploadToCutPro(sourceUrl, uploadUrl)
+    .then(() => res.status(202).json({ ok: true }))
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      res.status(502).json({ error: message });
+    });
+});
+
+app.get("/transfer/download-from-cutpro", (req, res) => {
+  if (!isAuthorized(req)) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const downloadUrl = req.query.url as string | undefined;
+  if (!downloadUrl || !isAllowedTransferHost(downloadUrl)) {
+    res.status(400).json({ error: "url ausente ou host não permitido" });
+    return;
+  }
+  fetch(downloadUrl)
+    .then(async (upstream) => {
+      if (!upstream.ok) {
+        res.status(502).json({ error: `Cut.Pro retornou ${upstream.status}` });
+        return;
+      }
+      res.setHeader(
+        "Content-Type",
+        upstream.headers.get("content-type") ?? "application/octet-stream"
+      );
+      res.send(Buffer.from(await upstream.arrayBuffer()));
+    })
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      res.status(502).json({ error: message });
+    });
 });
 
 const port = process.env.PORT ?? 8080;
