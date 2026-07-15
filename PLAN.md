@@ -362,9 +362,30 @@ processamento desperdiçado, não corrupção de dado.
 
 **Pronto para avançar quando**: publicação funcionando em pelo menos mais uma rede além do Instagram, com múltiplas contas de artista operando em paralelo sem conflito de agendamento.
 
+## M16 — Página "Drive" + Integração Cut.Pro (planejado 14/07/2026)
+
+**Objetivo**: nova página "Drive" na navegação que espelha a pasta do Google Drive (imagem e vídeo) — é ali que a equipe trabalha o conteúdo (legenda por IA, edição de vídeo com o template da casa via Cut.Pro) antes de enviar para a fila de aprovação existente. Escopo único deste milestone: integração Cut.Pro e a página Drive — nada de fila de aprovação, agendamento, acervo ou publicação é alterado. Plano completo (tarefas D0–D6) no registro de sessão; fonte de verdade deste sumário.
+
+**Mudança de comportamento (decisão consciente, não implícita)**: o cron `drive-ingest` (M3) hoje cria post automaticamente para qualquer arquivo novo da pasta. Com a página Drive, a criação de post passa a ser **curada** — o arquivo aparece no espelho e só vira post quando alguém agir sobre ele (gerar legenda, opcionalmente editar com Cut.Pro, e clicar "Enviar para aprovação"). O cron é reaproveitado como `drive-sync` (sincroniza o espelho a cada 5 min via GitHub Actions, mesmo padrão do M11) e **deixa de criar posts sozinho**, evitando duplicidade com a curadoria manual.
+
+**Princípios herdados (intocados)**: regra de ouro (nada publica sem aprovação humana — tudo na página Drive acontece antes da fila); publicação exclusiva via Zernio (a API de posts da Cut.Pro não é usada, só edição de vídeo); erro nunca silencioso (padrão `*_error` visível, igual M3–M5); camada isolada `lib/cutpro/` (mesmo padrão de `lib/publishing/`); Vercel orquestra/Railway transfere bytes (upload/download de vídeo passam pelo `render-worker` do M14 — o teto de 60s por função do plano Hobby, ver M11, inviabilizaria transferência de bytes direto na Vercel).
+
+**Tarefas**:
+- [x] **D0 — Preparação (Victor)**: chave da API gerada (`CUTPRO_API_KEY`, workspace pessoal `pw27390459223474176`, plano Plus); template da casa salvo na conta própria — `cutpro_template_id` **80009919218057216** ("n3on (cópia)", `auto_add_captions: true`, 9:16). Falta só confirmar ausência de marca d'água no primeiro render real (o próprio `force_watermark`/`has_watermark` da resposta denuncia se o plano gerar com marca d'água).
+- [x] **D1 — Fundação**: `lib/cutpro/client.ts`+`types.ts` (auth `X-Api-Key`, `CUTPRO_API_KEY`/`CUTPRO_WORKSPACE_ID`); migration `0019_drive_cutpro.sql` (tabela `drive_items` — espelho da pasta com `drive_file_id` único, `caption`/`caption_error`, `edit_status`, campos `cutpro_*`, `edited_media_path`, `post_id` como trava contra envio duplicado; `templates` ganha `provider`/`cutpro_template_id`). **Validado contra a API real em 15/07/2026**: base corrigida para `https://api.cut.pro/api/v1` (o `api.cutpro.io` do rascunho inicial nem resolvia); `getBalance`/`listTemplates` testados com a chave real (349 créditos, 2 templates próprios); client reescrito 1:1 contra `cut.pro/docs` — descoberta importante: `POST /clips` (submitClipping) aceita `template_id` direto, então clipes já podem sair com template aplicado sem precisar do `applyTemplate` separado no caminho feliz do D4 (mantido no client como fallback). Migration `0019` ainda **não aplicada** no Supabase de produção.
+- [ ] **D2 — Página "Drive" na navegação**: rota `/drive` (grupo Operação, todos os papéis), galeria em grid com estado por item; sincronização via cron `drive-sync` (reaproveita `drive-ingest`, 5 min) + listagem ao vivo ao carregar + botão "Atualizar agora"; arquivo removido do Drive fica marcado no espelho sem sumir do histórico se já tiver post.
+- [ ] **D3 — Legenda por IA na página**: botão "Gerar legenda" reusando o pipeline existente (imagem → GPT-4o visão + `extractContextFromFilename`; vídeo → pipeline multimodal do M4/pivô, `lib/openai/videoAnalysis.ts`) — 2–3 variações no guia de estilo, edição inline, `caption_error` visível com retry.
+- [ ] **D4 — Edição de vídeo via Cut.Pro**: botão "Editar com template" (seletor via `listTemplates`, link para o editor deles); pre-flight de créditos via `analyzeVideo`; máquina de estados persistida em `drive_items` (enviando→clipando→aplicando→renderizando→editado), retomável; upload/download de bytes via 2 endpoints novos no `render-worker` (`RENDER_WORKER_SECRET`); `apply_template` serializado (1 job por conta, 429 tratado como retry, não erro); `has_watermark: true` → erro explícito; `download_url` expira em 1h → download imediato para o Storage; novo cron `cutpro-pipeline` (GitHub Actions, 5 min) avança os estados com claim atômico (padrão `publish-scheduled`).
+- [ ] **D5 — Enviar para aprovação**: botão que cria o post (rascunho→pendente_aprovação) com mídia (editada ou original) + legenda, grava `drive_items.post_id` (trava contra duplo envio); daí em diante fluxo 100% atual (aprovação→agendamento→Zernio→métricas).
+- [ ] **D6 — Monitor de créditos**: `getBalance()` no início de cada ciclo do cron; notificação in-app única (padrão `disconnected_alert_sent_at` do M11/M13) abaixo de 20% do saldo; saldo visível em `/admin/integracoes`.
+
+**Fora do escopo (explícito)**: publicação via Cut.Pro; criação/edição de template via API (não existe, é só no editor visual deles); customização de legenda por chamada (vive no template); clipagem de vídeo longo em massa (candidato a plano próprio depois); qualquer mudança na fila de aprovação, agendamento, acervo ou publicação.
+
+**Pronto para avançar quando**: ponta a ponta real — imagem/vídeo sobe no Drive → aparece em `/drive` → legenda IA (e, para vídeo, edição com template da casa) → enviar → aprovado → publicado via Zernio.
+
 ---
 
-## Cronograma e custos revisados (M11–M15)
+## Cronograma e custos revisados (M11–M16)
 
 | Semana | Entrega | Custo mensal acumulado |
 |---|---|---|
@@ -373,6 +394,7 @@ processamento desperdiçado, não corrupção de dado.
 | 3–5 | M13 piloto assistido | igual |
 | 5–8 | M14 motor de templates de vídeo | + ~US$ 5–10 (worker) + Whisper (~US$ 0,006/min) |
 | Fase 3 | M15 TikTok/escala | conforme plano Zernio (~US$ 1–6/conta) |
+| sob demanda | M16 página Drive + Cut.Pro | + plano Cut.Pro (créditos por minuto de vídeo-fonte) |
 
 ## Riscos desta versão (M11–M15)
 
@@ -381,6 +403,7 @@ processamento desperdiçado, não corrupção de dado.
 - **Zernio é fornecedor jovem** — healthcheck ativo + `PublishingProvider` isolada são as proteções; a rota Meta é o plano B permanente.
 - **Canal de notificação indefinido** (Resend removido nesta sessão) — decidir no M11; alertas silenciosos são o pior cenário operacional do sistema (`docs/CLAUDE.md`).
 - **M14 (vídeo) continua o marco tecnicamente mais arriscado** — testar Whisper com gíria de funk na primeira semana do milestone; fallback: legenda revisável na fila.
+- **M16 (Cut.Pro) muda o comportamento do `drive-ingest`** — de criação automática de post para curadoria manual via página `/drive`; decisão consciente do Victor, mas é a única quebra de comportamento existente no roadmap pós-M11 e precisa ser confirmada no início do desenvolvimento do M16. Fornecedor novo (Cut.Pro) mais um ponto de falha externo; camada `lib/cutpro/` isolada segue a mesma proteção já validada para o Zernio no M12.
 
 ---
 

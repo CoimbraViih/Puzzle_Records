@@ -7,10 +7,13 @@ export function getCutProProvider(): CutProProvider {
 
 export type {
   CutProTemplate,
-  AnalyzeVideoResult,
   UploadHandle,
+  CompletedUpload,
+  SubmissionStatus,
   ClippingSubmission,
   Clip,
+  RenderJobStatus,
+  RenderSubmission,
   RenderStatus,
   CutProBalance,
   CutProProvider,

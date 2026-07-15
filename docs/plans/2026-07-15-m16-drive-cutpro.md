@@ -13,12 +13,22 @@ Plano técnico do milestone descrito em [PLAN.md#m16](../../PLAN.md#m16--página
 - Vercel orquestra, Railway (`render-worker/`) transfere bytes — mesmo motivo do M14 (teto de 60s do plano Hobby).
 - **Quebra de comportamento consciente**: `drive-ingest` (M3) hoje cria post automaticamente. Passa a virar `drive-sync`, só espelha — a criação de post migra para a ação manual "Enviar para aprovação" na nova página `/drive` (D5).
 
-## D0 — Preparação (Victor, fora do código)
+## D0 — Preparação (Victor, fora do código) — feito em 15/07/2026
 
-Bloqueante para testar D4/D6 contra a API real, **não bloqueia D1–D3/D5 (scaffolding e a parte do fluxo que não depende do Cut.Pro)**:
-- Gerar chave da API Cut.Pro (`CUTPRO_API_KEY`) e o `CUTPRO_WORKSPACE_ID`.
-- Salvar o template da casa na conta Cut.Pro (`auto_add_captions` ligado, sem marca d'água) e anotar o `cutpro_template_id`.
-- Confirmar que o plano contratado não gera vídeo com marca d'água (`has_watermark: true` na resposta é tratado como erro explícito em D4).
+- Chave gerada e validada contra a API real: `GET /balance` → 349 créditos; `GET /workspace` → workspace pessoal `pw27390459223474176`, plano **Plus** (não é o plano gratuito de 15 créditos).
+- Template da casa salvo na conta (`GET /templates?filter=mine`): `cutpro_template_id` **80009919218057216** ("n3on (cópia)"), `auto_add_captions: true`, `aspect_ratio: 9:16`, `is_public: false` (cópia própria, aceito por `apply_template`/`submitClipping`).
+- **Pendente**: confirmação de ausência de marca d'água — o plano Plus não é documentado publicamente como "sem marca d'água" por padrão; só se confirma no primeiro `completeUpload`/`renderClip` real (`force_watermark`/`has_watermark` na resposta). Tratado como erro explícito em D4 se vier `true`.
+
+## Correção de D1 (15/07/2026) — API real validada
+
+O rascunho original desta seção chutou `https://api.cutpro.io/v1` como base — domínio que **não existe** (`api.cutpro.io` não resolve). A base real, confirmada contra `cut.pro/docs` e testada com a chave real, é `https://api.cut.pro/api/v1`. `lib/cutpro/client.ts`/`types.ts` foram reescritos 1:1 contra a doc oficial (não mais um "stub best-effort"):
+
+- Upload: `POST /videos/upload` (`file_name`+`file_size` obrigatórios, não só `filename`) → `PUT` bytes na `upload_url` → `POST /videos/upload/complete` (`video_id`+`file_name`+`duration`+`width`+`height`) — **este endpoint já retorna o pre-flight de créditos/marca d'água** (`credits_cost`, `force_watermark`, `current_balance`); não existe um endpoint de "analyze" separado para vídeo próprio (`/clips/info` é só para URL pública de terceiros — YouTube/Twitch/etc., fora do escopo do M16).
+- Clipagem: `POST /clips` (não `/clipping-submissions`) — aceita `template_id` direto no corpo, então os clipes já podem sair com o template aplicado sem precisar do `apply_template` separado no caminho feliz. `GET /clips/{videoId}/submissions/{submissionId}` faz polling (status `queued|downloading|transcribing|video_analysis|analyzing|finalizing|completed|failed`); `GET /clips/{videoId}/submissions/{submissionId}/clips` lista os clipes (campo de score é `rating`, não `score`; `has_template_applied` indica se já saiu com template).
+- Template avulso (fallback, se o template só for escolhido depois de ver os clipes): `POST /clips/{videoId}/submissions/{submissionId}/apply_template` — 429 `BATCH_ALREADY_RUNNING` confirmado.
+- Render: `POST /clips/{videoId}/submissions/{submissionId}/clips/{clipId}/render` — pode devolver 200 com `download_url` já pronto (cache) ou 202 com `render_id` pra poll; `GET /renders/{renderId}` (status `queued|active|completed|failed|cancelled|expired` + `progress`); `GET /renders/{renderId}/download` (`url`+`filename`, expira em 1h).
+- `GET /templates?filter=mine|public`, `GET /balance` — confirmados 1:1 com o rascunho original.
+- **Simplificação a considerar no D4**: como `submitClipping` já aceita `template_id`, dá pra colapsar os estados `clipando`+`aplicando` em um só quando o template é conhecido de antemão (é o caso do M16 — sempre o template da casa) — mantendo `aplicando` só como fallback se um dia a escolha de template acontecer depois de ver os clipes gerados.
 
 ## D1 — Fundação
 
