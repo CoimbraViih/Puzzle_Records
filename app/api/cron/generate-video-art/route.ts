@@ -36,6 +36,25 @@ async function recordError(postId: string, message: string) {
   }
 }
 
+/**
+ * Sem template de vídeo padrão configurado, o motor de render (Remotion,
+ * M14) simplesmente não existe ainda — publica o vídeo bruto em vez de
+ * travar o post pra sempre em "aprovado" sem nenhum erro visível
+ * (comportamento observado num teste real: rendered_art_url nunca era
+ * preenchido e o post nunca ficava elegível em pendingPublish.ts). Assim
+ * que um template default existir, esse fallback para de ser usado.
+ */
+async function fallbackToRawVideo(supabase: ReturnType<typeof createServiceClient>, postId: string, mediaUrl: string) {
+  const { error } = await supabase
+    .from("posts")
+    .update({ rendered_art_url: mediaUrl })
+    .eq("id", postId);
+  if (error) {
+    console.error(`[generate-video-art] falha ao gravar fallback de vídeo bruto do post ${postId}:`, error.message);
+    await recordError(postId, `Falha ao aplicar fallback de vídeo sem template: ${error.message}`);
+  }
+}
+
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -46,11 +65,15 @@ export async function GET(request: Request) {
     getDefaultVideoTemplateForCron(),
   ]);
 
+  const supabase = createServiceClient();
+
   if (!template) {
-    return NextResponse.json({ error: "nenhum template de vídeo default configurado" }, { status: 500 });
+    for (const post of pending) {
+      await fallbackToRawVideo(supabase, post.id, post.media_url);
+    }
+    return NextResponse.json({ submitted: 0, fallbackRawVideo: pending.length, total: pending.length });
   }
 
-  const supabase = createServiceClient();
   let submitted = 0;
 
   for (const post of pending.slice(0, MAX_VIDEOS_PER_RUN)) {
