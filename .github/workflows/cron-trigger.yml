@@ -35,7 +35,7 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SITE_URL: ${{ vars.SITE_URL }}
         run: |
-          for path in drive-sync generate-copy generate-art generate-video-art poll-video-render publish-scheduled; do
+          for path in drive-sync cutpro-pipeline generate-copy generate-art generate-video-art poll-video-render publish-scheduled; do
             echo "== $path =="
             curl -sS -o /dev/null -w "status=%{http_code}\n" \
               -H "Authorization: Bearer $CRON_SECRET" \
