@@ -119,7 +119,16 @@ async function stepEnviando(
 
   const probe = await probeVideo(mediaBuffer, extension);
 
-  const upload = await cutpro.startUpload(item.filename, mediaBuffer.length, "video/mp4");
+  // Cut.Pro valida a extensão do `file_name` em si (INVALID_FILE_TYPE se
+  // não for .mp4/.mov/.webm/.mkv) — o nome original do arquivo no Drive
+  // (item.filename) não é confiável pra isso (pode vir sem extensão, ex.:
+  // um arquivo chamado só "video"). Usa sempre a extensão real do Storage
+  // (media_storage_path, atribuída no mirror) com o nome original como base.
+  const cutproFileName = item.filename.toLowerCase().endsWith(`.${extension}`)
+    ? item.filename
+    : `${item.filename}.${extension}`;
+
+  const upload = await cutpro.startUpload(cutproFileName, mediaBuffer.length, "video/mp4");
 
   const { data: signedUrlData, error: signError } = await supabase.storage
     .from(MEDIA_BUCKET)
@@ -132,7 +141,7 @@ async function stepEnviando(
 
   const completed = await cutpro.completeUpload(
     upload.videoId,
-    item.filename,
+    cutproFileName,
     probe.durationSeconds,
     probe.width,
     probe.height

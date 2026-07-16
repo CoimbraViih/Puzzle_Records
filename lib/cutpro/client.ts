@@ -42,15 +42,20 @@ function authHeaders(apiKey: string, extra?: Record<string, string>) {
 }
 
 async function cutproErrorMessage(response: Response): Promise<string> {
-  const body = (await response.json().catch(() => null)) as {
-    error?: string;
-    message?: string;
-    code?: string;
-  } | null;
-  const message = body?.error ?? body?.message;
-  return message
-    ? `Cut.Pro (${response.status}${body?.code ? `/${body.code}` : ""}): ${message}`
-    : `Cut.Pro retornou ${response.status} sem corpo de erro reconhecível.`;
+  const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  const message = (body?.error as string | undefined) ?? (body?.message as string | undefined);
+  if (message) {
+    return `Cut.Pro (${response.status}${body?.code ? `/${body.code}` : ""}): ${message}`;
+  }
+  // Alguns erros (ex.: INVALID_FILE_TYPE de POST /videos/upload) só trazem
+  // `code` + metadados extras (allowed_extensions, max_size etc.), sem
+  // `error`/`message` — sem isso, o cutpro_error ficava ilegível
+  // ("sem corpo de erro reconhecível"), quebrando o princípio de erro nunca
+  // silencioso do projeto.
+  if (body && Object.keys(body).length > 0) {
+    return `Cut.Pro (${response.status}): ${JSON.stringify(body)}`;
+  }
+  return `Cut.Pro retornou ${response.status} sem corpo de erro reconhecível.`;
 }
 
 async function requestJson<T>(
