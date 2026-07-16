@@ -6,10 +6,7 @@ import {
   Library,
   LayoutDashboard,
   LayoutGrid,
-  Plug,
-  Share2,
   Shield,
-  Users,
 } from "lucide-react";
 
 import type { Role } from "@/lib/types/profile";
@@ -79,24 +76,6 @@ const NAV_GROUPS: NavGroup[] = [
         title: "Painel admin",
         url: "/admin",
         icon: Shield,
-        roles: ["admin"],
-      },
-      {
-        title: "Contas sociais",
-        url: "/admin/contas",
-        icon: Share2,
-        roles: ["admin"],
-      },
-      {
-        title: "Integrações",
-        url: "/admin/integracoes",
-        icon: Plug,
-        roles: ["admin"],
-      },
-      {
-        title: "Usuários",
-        url: "/admin/usuarios",
-        icon: Users,
         roles: ["admin"],
       },
     ],
