@@ -118,7 +118,19 @@ export async function generateCopyVariations(
       ],
     });
 
-    const content = completion.choices[0]?.message?.content;
+    // Modelos gratuitos do OpenRouter às vezes respondem 200 com um corpo
+    // de erro (`{ error: {...} }`) em vez de `choices` — sem esse guard,
+    // `completion.choices[0]` estoura TypeError bruto em vez de um erro
+    // tratável (quebrando o post rápido em silêncio pro usuário).
+    const errorBody = (completion as { error?: { message?: string } }).error;
+    if (errorBody) {
+      lastError = new CopyGenerationError(
+        `Provedor de IA retornou erro: ${errorBody.message ?? "erro desconhecido"}.`
+      );
+      continue;
+    }
+
+    const content = completion.choices?.[0]?.message?.content;
     if (!content) {
       lastError = new CopyGenerationError("OpenAI retornou resposta vazia.");
       continue;
