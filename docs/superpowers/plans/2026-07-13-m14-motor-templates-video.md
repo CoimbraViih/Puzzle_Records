@@ -1,5 +1,7 @@
 # M14 — Motor e página de templates de vídeo — Implementation Plan
 
+> **Nota de 16/07/2026**: Railway (mencionado abaixo como host do `render-worker`) foi removido do projeto — incluído sem validação do Victor, nunca chegou a ser deployado. A hospedagem do worker segue em aberto (precisa suportar Chromium por causa do Remotion, então não é uma função serverless comum da Vercel); as menções a Railway no restante deste documento são histórico da sessão original, não a decisão atual. Ver PLAN.md#m14 e docs/CLAUDE.md.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Fechar a lacuna de vídeo do M5 (hoje `renderArt.ts` lança erro explícito para `mediaType === "video"`) com um motor de templates próprio (Remotion + Whisper com timestamps por palavra + FFmpeg), um worker de render fora da Vercel (Railway) chamado de forma assíncrona e idempotente pelo painel, e uma página `/templates` para escolher/customizar o template aplicado.

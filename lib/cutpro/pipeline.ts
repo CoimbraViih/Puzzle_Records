@@ -3,7 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCutProProvider } from "./index";
 import { CutProRateLimitError } from "./types";
 import { probeVideo } from "./probeVideo";
-import { downloadFromCutPro, relayUploadToCutPro } from "@/lib/renderWorker/cutproTransfer";
 
 const MEDIA_BUCKET = "posts-media";
 
@@ -130,14 +129,18 @@ async function stepEnviando(
 
   const upload = await cutpro.startUpload(cutproFileName, mediaBuffer.length, "video/mp4");
 
-  const { data: signedUrlData, error: signError } = await supabase.storage
-    .from(MEDIA_BUCKET)
-    .createSignedUrl(item.media_storage_path, 300);
-  if (signError || !signedUrlData) {
-    throw new Error(`Falha ao gerar URL assinada da mídia original: ${signError?.message}`);
+  // Upload direto pra URL presignada do Cut.Pro dentro da própria função da
+  // Vercel — sem worker externo no meio (decisão de sessão de 16/07/2026,
+  // ver PLAN.md: Railway removido do projeto). mediaBuffer já está em
+  // memória (baixado acima pro probeVideo), não precisa nem de URL assinada.
+  const uploadResponse = await fetch(upload.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "video/mp4" },
+    body: mediaBuffer,
+  });
+  if (!uploadResponse.ok) {
+    throw new Error(`Cut.Pro recusou o upload do vídeo (status ${uploadResponse.status}).`);
   }
-
-  await relayUploadToCutPro(signedUrlData.signedUrl, upload.uploadUrl);
 
   const completed = await cutpro.completeUpload(
     upload.videoId,
@@ -222,7 +225,13 @@ async function finalizeRender(
   item: CutProDriveItem,
   downloadUrl: string
 ): Promise<void> {
-  const bytes = await downloadFromCutPro(downloadUrl);
+  // Mesmo raciocínio do upload: baixa direto da CDN do Cut.Pro e sobe pro
+  // Storage sem passar por worker externo nenhum.
+  const downloadResponse = await fetch(downloadUrl);
+  if (!downloadResponse.ok) {
+    throw new Error(`Falha ao baixar o render do Cut.Pro (status ${downloadResponse.status}).`);
+  }
+  const bytes = Buffer.from(await downloadResponse.arrayBuffer());
   const editedPath = `cutpro-edited/${item.id}.mp4`;
   const { error: uploadError } = await supabase.storage
     .from(MEDIA_BUCKET)

@@ -10,7 +10,7 @@ Plano técnico do milestone descrito em [PLAN.md#m16](../../PLAN.md#m16--página
 - Publicação continua exclusiva via Zernio — Cut.Pro só edita vídeo.
 - Erro nunca silencioso — todo campo novo segue o idioma `*_error` já usado em `posts` (`art_generation_error`, `copy_generation_error`, `publish_error`, `ingestion_warning`).
 - Camada isolada `lib/cutpro/` espelhando exatamente `lib/publishing/` (types.ts + client concreto + index.ts como única fronteira de import).
-- Vercel orquestra, Railway (`render-worker/`) transfere bytes — mesmo motivo do M14 (teto de 60s do plano Hobby).
+- ~~Vercel orquestra, Railway (`render-worker/`) transfere bytes — mesmo motivo do M14 (teto de 60s do plano Hobby).~~ **Superado em 16/07/2026**: Railway removido do projeto (incluído sem validação do Victor, nunca chegou a ser deployado) — upload/download de bytes do Cut.Pro passaram a rodar direto nas rotas da Vercel (`lib/cutpro/pipeline.ts`), sem worker no meio. Ver PLAN.md#m16 e docs/CLAUDE.md para o detalhe.
 - **Quebra de comportamento consciente**: `drive-ingest` (M3) hoje cria post automaticamente. Passa a virar `drive-sync`, só espelha — a criação de post migra para a ação manual "Enviar para aprovação" na nova página `/drive` (D5).
 
 ## D0 — Preparação (Victor, fora do código) — feito em 15/07/2026
