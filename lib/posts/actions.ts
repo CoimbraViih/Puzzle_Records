@@ -389,7 +389,21 @@ export async function rejectPost(
     return { error: "Não foi possível rejeitar o post." };
   }
 
+  // Se este post veio da página Drive (drive_items.post_id como trava
+  // contra duplo envio, ver lib/drive/sendToApproval.ts), a rejeição libera
+  // o item de novo: sem isso, o item ficava "Enviado para aprovação" pra
+  // sempre em /drive, mesmo rejeitado, sem jeito de corrigir a legenda/
+  // edição e reenviar. Não afeta posts sem origem no Drive (0 linhas).
+  const { error: driveUnlinkError } = await supabase
+    .from("drive_items")
+    .update({ post_id: null })
+    .eq("post_id", postId);
+  if (driveUnlinkError) {
+    console.error("Falha ao liberar drive_item após rejeição (não bloqueia a rejeição):", driveUnlinkError);
+  }
+
   revalidatePostPages();
+  revalidatePath("/drive");
   return { success: true };
 }
 
