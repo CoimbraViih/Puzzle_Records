@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { SOCIAL_NETWORK_LABELS, SOCIAL_NETWORKS } from "@/lib/types/social-account";
 
-import { createSocialAccount, type SocialAccountFormState } from "./actions";
+import { createSocialAccount, type SocialAccountFormState } from "@/components/admin/contas-actions";
 
 const initialState: SocialAccountFormState = undefined;
 

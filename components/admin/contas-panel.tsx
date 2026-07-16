@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/dashboard/page-header";
 import { listSocialAccounts } from "@/lib/posts/queries";
 import { listZernioAccounts } from "@/lib/publishing";
 import { SOCIAL_NETWORK_LABELS } from "@/lib/types/social-account";
@@ -13,8 +12,6 @@ import {
   updateAcervoSlots,
 } from "@/components/admin/contas-actions";
 import { SocialAccountForm } from "@/components/admin/social-account-form";
-
-export const dynamic = "force-dynamic";
 
 async function ZernioAccountPicker({ linkedZernioIds }: { linkedZernioIds: Set<string> }) {
   let zernioAccounts;
@@ -103,7 +100,7 @@ async function ZernioAccountPicker({ linkedZernioIds }: { linkedZernioIds: Set<s
   );
 }
 
-export default async function ContasPage() {
+export default async function ContasPanel() {
   const accounts = await listSocialAccounts();
   const linkedZernioIds = new Set(
     accounts.map((account) => account.zernio_account_id).filter((id): id is string => Boolean(id))
@@ -111,11 +108,6 @@ export default async function ContasPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-10 md:px-8">
-      <PageHeader
-        title="Contas sociais"
-        description="Conecte a conta primeiro no Zernio, depois adicione aqui com um clique."
-      />
-
       <ZernioAccountPicker linkedZernioIds={linkedZernioIds} />
 
       <details className="group">
