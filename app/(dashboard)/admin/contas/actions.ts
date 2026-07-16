@@ -7,6 +7,53 @@ import { SOCIAL_NETWORKS, type SocialNetwork } from "@/lib/types/social-account"
 
 export type SocialAccountFormState = { error?: string } | undefined;
 
+/**
+ * Cria uma social_account a partir de uma conta já conectada no Zernio
+ * (GET /accounts) — um clique, sem o usuário caçar/copiar nenhum ID. Ver
+ * `lib/publishing/zernio.ts#listZernioAccounts` e a decisão de simplificação
+ * em PLAN.md. Idempotente: se esse zernio_account_id já estiver associado a
+ * alguma conta, não duplica.
+ */
+export async function addSocialAccountFromZernio(formData: FormData): Promise<void> {
+  const network = String(formData.get("network") ?? "") as SocialNetwork;
+  const handle = String(formData.get("handle") ?? "").trim();
+  const displayName = String(formData.get("display_name") ?? "").trim();
+  const zernioAccountId = String(formData.get("zernio_account_id") ?? "").trim();
+
+  if (!SOCIAL_NETWORKS.includes(network) || !handle || !zernioAccountId) {
+    console.error("[admin/contas] dados incompletos vindos do Zernio, ignorando:", {
+      network,
+      handle,
+      zernioAccountId,
+    });
+    return;
+  }
+
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("social_accounts")
+    .select("id")
+    .eq("zernio_account_id", zernioAccountId)
+    .maybeSingle();
+  if (existing) {
+    revalidatePath("/admin/contas");
+    return;
+  }
+
+  const { error } = await supabase.from("social_accounts").insert({
+    network,
+    handle,
+    display_name: displayName || handle,
+    zernio_account_id: zernioAccountId,
+  });
+
+  if (error) {
+    console.error("[admin/contas] falha ao criar conta a partir do Zernio:", error);
+  }
+  revalidatePath("/admin/contas");
+}
+
 export async function createSocialAccount(
   _prevState: SocialAccountFormState,
   formData: FormData

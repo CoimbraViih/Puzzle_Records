@@ -26,6 +26,10 @@ export interface DriveItemRow {
   edited_media_path: string | null;
   post_id: string | null;
   created_at: string;
+  /** URL assinada (1h) do media_storage_path — null se ainda não baixado. */
+  media_signed_url: string | null;
+  /** URL assinada (1h) do edited_media_path — null se o item não foi editado no Cut.Pro. */
+  edited_media_signed_url: string | null;
 }
 
 /** Ordenado por criação mais recente primeiro, mesmo padrão de listPostsPendingPublish. */
@@ -42,5 +46,50 @@ export async function listDriveItems(): Promise<DriveItemRow[]> {
     console.error("[drive] falha ao listar drive_items:", error.message);
     return [];
   }
-  return data ?? [];
+
+  const items = data ?? [];
+  if (items.length === 0) return items.map((item) => ({ ...item, media_signed_url: null, edited_media_signed_url: null }));
+
+  // Mesmo padrão de listPosts (lib/posts/queries.ts): 1 round-trip só pro
+  // Storage, misturando os paths de mídia original e de mídia editada.
+  const mediaPaths = items.map((item) => item.media_storage_path);
+  const editedPathEntries = items
+    .map((item, index) => ({ index, path: item.edited_media_path }))
+    .filter((entry): entry is { index: number; path: string } => entry.path !== null);
+
+  const { data: signedUrls, error: signedUrlsError } = await supabase.storage
+    .from("posts-media")
+    .createSignedUrls(
+      [...mediaPaths.filter((p): p is string => p !== null), ...editedPathEntries.map((entry) => entry.path)],
+      60 * 60
+    );
+
+  if (signedUrlsError) {
+    console.error("[drive] falha ao gerar URLs assinadas da mídia:", signedUrlsError.message);
+    return items.map((item) => ({ ...item, media_signed_url: null, edited_media_signed_url: null }));
+  }
+
+  // mediaPaths pode ter nulls (item sem mídia baixada ainda) — mapeia por
+  // posição pulando os nulls, já que createSignedUrls só recebeu os paths reais.
+  let mediaCursor = 0;
+  const mediaSignedUrlByIndex = new Map<number, string | null>();
+  mediaPaths.forEach((path, index) => {
+    if (path === null) {
+      mediaSignedUrlByIndex.set(index, null);
+      return;
+    }
+    mediaSignedUrlByIndex.set(index, signedUrls?.[mediaCursor]?.signedUrl ?? null);
+    mediaCursor++;
+  });
+
+  const editedSignedUrlByIndex = new Map<number, string | null>();
+  editedPathEntries.forEach((entry, editedIndex) => {
+    editedSignedUrlByIndex.set(entry.index, signedUrls?.[mediaCursor + editedIndex]?.signedUrl ?? null);
+  });
+
+  return items.map((item, index) => ({
+    ...item,
+    media_signed_url: mediaSignedUrlByIndex.get(index) ?? null,
+    edited_media_signed_url: editedSignedUrlByIndex.get(index) ?? null,
+  }));
 }

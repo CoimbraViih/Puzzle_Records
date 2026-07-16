@@ -347,3 +347,64 @@ export class ZernioProvider implements PublishingProvider {
     };
   }
 }
+
+/** Redes suportadas pelo sistema (lib/types/social-account.ts) — Zernio
+ * conecta 14+ plataformas, mas só essas 4 têm lugar em `social_accounts`. */
+const SUPPORTED_NETWORKS = ["instagram", "tiktok", "youtube", "facebook"] as const;
+
+export interface ZernioAccount {
+  id: string;
+  network: (typeof SUPPORTED_NETWORKS)[number];
+  username: string;
+  displayName: string;
+  profilePictureUrl: string | null;
+  isActive: boolean;
+}
+
+/**
+ * GET /accounts (testado contra a API real em 16/07/2026) — lista as contas
+ * já conectadas no workspace do Zernio. Usado só por /admin/contas pra
+ * eliminar a cópia manual do ID do Zernio (decisão de sessão, ver PLAN.md):
+ * em vez do usuário caçar o ID no painel do Zernio e colar num campo de
+ * texto, a tela mostra as contas já conectadas lá e cria/associa
+ * `social_accounts` com um clique. Contas de plataformas ainda não
+ * suportadas pelo sistema (ex.: Bluesky, LinkedIn) são filtradas.
+ */
+export async function listZernioAccounts(): Promise<ZernioAccount[]> {
+  const apiKey = requireApiKey();
+
+  let response: Response;
+  try {
+    response = await fetch(`${ZERNIO_BASE_URL}/accounts`, { headers: authHeaders(apiKey) });
+  } catch (err) {
+    throw new PublishError(`Falha de rede ao chamar a API do Zernio (GET /accounts): ${describeThrown(err)}`);
+  }
+  if (!response.ok) {
+    throw new PublishError(await zernioErrorMessage(response));
+  }
+
+  const data = (await response.json().catch(() => null)) as {
+    accounts?: {
+      _id: string;
+      platform: string;
+      username?: string;
+      displayName?: string;
+      profilePicture?: string;
+      isActive?: boolean;
+    }[];
+  } | null;
+
+  const accounts = data?.accounts ?? [];
+  return accounts
+    .filter((account): account is typeof account & { platform: (typeof SUPPORTED_NETWORKS)[number] } =>
+      (SUPPORTED_NETWORKS as readonly string[]).includes(account.platform)
+    )
+    .map((account) => ({
+      id: account._id,
+      network: account.platform,
+      username: account.username ?? account._id,
+      displayName: account.displayName ?? account.username ?? account._id,
+      profilePictureUrl: account.profilePicture ?? null,
+      isActive: account.isActive ?? true,
+    }));
+}

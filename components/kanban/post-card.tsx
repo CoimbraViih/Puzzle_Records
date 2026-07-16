@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import {
   approvePost,
   deletePost,
@@ -100,7 +100,7 @@ export function PostCard({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={post.media_signed_url}
-          alt={post.headline ?? "Mídia aguardando manchete da IA (M4)"}
+          alt={post.headline ?? "Mídia aguardando manchete da IA"}
           className="h-32 w-full rounded-md object-cover"
         />
       )}
@@ -123,11 +123,11 @@ export function PostCard({
 
       {(post.headline || post.content_source !== "acervo") && (
         <p className="text-sm font-semibold text-foreground">
-          {post.headline ?? "Aguardando manchete da IA (M4)"}
+          {post.headline ?? "Aguardando manchete da IA"}
         </p>
       )}
       <p className="line-clamp-3 text-xs text-muted-foreground">
-        {post.caption ?? "Aguardando legenda da IA (M4)"}
+        {post.caption ?? "Aguardando legenda da IA"}
       </p>
 
       {post.copy_variations &&
@@ -136,13 +136,12 @@ export function PostCard({
         <div className="flex flex-wrap gap-1">
           {post.copy_variations.map((variation, index) => (
             <form key={index} action={selectCopyVariation.bind(null, post.id, index)}>
-              <Button
-                type="submit"
+              <SubmitButton
                 size="sm"
                 variant={variation.headline === post.headline ? "default" : "outline"}
               >
                 Variação {index + 1}
-              </Button>
+              </SubmitButton>
             </form>
           ))}
         </div>
@@ -178,7 +177,7 @@ export function PostCard({
       )}
 
       {post.ingestion_warning && (
-        <p className="rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-600 dark:text-amber-400">
+        <p className="rounded-md bg-warning/10 px-2 py-1 text-xs text-warning">
           {post.ingestion_warning}
         </p>
       )}
@@ -214,19 +213,19 @@ export function PostCard({
 
         {canSubmit(post, role, currentUserId) && (
           <form action={submitForApproval.bind(null, post.id)}>
-            <Button type="submit" size="sm">
+            <SubmitButton size="sm" pendingLabel="Enviando...">
               {post.status === "rejeitado"
                 ? "Reenviar"
                 : "Enviar para aprovação"}
-            </Button>
+            </SubmitButton>
           </form>
         )}
 
         {canDecide(post, role) && (
           <form action={approvePost.bind(null, post.id)}>
-            <Button type="submit" size="sm">
+            <SubmitButton size="sm" pendingLabel="Aprovando...">
               Aprovar
-            </Button>
+            </SubmitButton>
           </form>
         )}
 
@@ -234,9 +233,9 @@ export function PostCard({
 
         {canRetryPublish(post, role) && (
           <form action={retryPublish.bind(null, post.id)}>
-            <Button type="submit" size="sm" variant="outline">
+            <SubmitButton size="sm" variant="outline" pendingLabel="Tentando...">
               Tentar publicar novamente
-            </Button>
+            </SubmitButton>
           </form>
         )}
 
@@ -244,9 +243,9 @@ export function PostCard({
           post.template &&
           canEdit(post, role, currentUserId) && (
             <form action={regenerateArt.bind(null, post.id)}>
-              <Button type="submit" size="sm" variant="outline">
+              <SubmitButton size="sm" variant="outline" pendingLabel="Gerando...">
                 {post.rendered_art_url ? "Regenerar arte" : "Gerar arte"}
-              </Button>
+              </SubmitButton>
             </form>
           )}
 

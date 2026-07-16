@@ -16,10 +16,26 @@ const EDIT_STATUS_LABEL: Record<DriveItemRow["edit_status"], string> = {
 };
 
 export function DriveItemCard({ item }: { item: DriveItemRow }) {
+  const previewUrl = item.edited_media_signed_url ?? item.media_signed_url;
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+      {previewUrl && item.media_type === "image" ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={previewUrl}
+          alt={item.filename}
+          className="h-40 w-full rounded-md border border-border object-cover"
+        />
+      ) : previewUrl && item.media_type === "video" ? (
+        <video src={previewUrl} controls className="h-40 w-full rounded-md border border-border object-cover" />
+      ) : (
+        <div className="flex h-40 w-full items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
+          Mídia ainda não disponível
+        </div>
+      )}
       <div className="flex items-center gap-2 text-sm font-medium">
-        {item.media_type === "video" ? <FileVideo className="size-4" /> : null}
+        {item.media_type === "video" ? <FileVideo className="size-4 shrink-0" /> : null}
         <span className="truncate">{item.filename}</span>
       </div>
       {item.removed_from_drive ? (

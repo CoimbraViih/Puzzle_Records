@@ -62,7 +62,7 @@ export function AnalyticsSummarySection({
         {headerAction}
       </div>
       {metricsErrorCount > 0 && (
-        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
+        <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
           ⚠️ {metricsErrorCount} post(s) com falha na coleta de métricas — os
           números abaixo podem estar incompletos. Ver logs do cron collect-metrics.
         </p>
