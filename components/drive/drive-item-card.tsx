@@ -1,5 +1,6 @@
 import { FileVideo } from "lucide-react";
 
+import { EditWithTemplateButton } from "@/components/drive/edit-with-template-button";
 import { GenerateCaptionButton } from "@/components/drive/generate-caption-button";
 import { SendToApprovalButton } from "@/components/drive/send-to-approval-button";
 import type { DriveItemRow } from "@/lib/drive/queries";
@@ -40,6 +41,11 @@ export function DriveItemCard({ item }: { item: DriveItemRow }) {
           {item.caption ? (
             <p className="line-clamp-3 text-xs text-foreground">{item.caption}</p>
           ) : null}
+          {item.media_type === "video" &&
+          (item.edit_status === "nao_editado" || item.edit_status === "erro") ? (
+            <EditWithTemplateButton driveItemId={item.id} />
+          ) : null}
+          {item.cutpro_error ? <p className="text-xs text-destructive">{item.cutpro_error}</p> : null}
           {item.caption ? <SendToApprovalButton driveItemId={item.id} /> : null}
         </>
       ) : null}

@@ -1,4 +1,9 @@
-const CUTPRO_HOST_ALLOWLIST = ["cutpro.io", "api.cutpro.io"];
+// Hosts reais confirmados testando a API de ponta a ponta com a chave real
+// em 15/07/2026 (ver docs/plans/2026-07-15-m16-drive-cutpro.md) — "cutpro.io"/
+// "api.cutpro.io" (chute inicial do D1) nunca foram os hosts corretos.
+// startUpload devolve uma URL presignada de S3 (host varia por região do
+// bucket, hoje us-east-1); getRenderDownloadUrl devolve um link do CDN deles.
+const CUTPRO_HOST_ALLOWLIST = ["cutpro-storage.s3.us-east-1.amazonaws.com", "cdn.cut.pro"];
 
 export function isAllowedTransferHost(rawUrl: string): boolean {
   try {
