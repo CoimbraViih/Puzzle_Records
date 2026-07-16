@@ -11,7 +11,6 @@ export type AcervoFormState = { error?: string; success?: boolean } | undefined;
 function revalidateAcervoPages() {
   revalidatePath("/conteudo");
   revalidatePath("/aprovacao");
-  revalidatePath("/acervo");
   revalidatePath("/admin");
 }
 

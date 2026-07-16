@@ -3,7 +3,6 @@ import {
   CalendarDays,
   CheckSquare,
   FolderOpen,
-  Library,
   LayoutDashboard,
   LayoutGrid,
   Shield,
@@ -47,12 +46,6 @@ const NAV_GROUPS: NavGroup[] = [
         title: "Drive",
         url: "/drive",
         icon: FolderOpen,
-        roles: ["admin", "aprovador", "equipe_conteudo"],
-      },
-      {
-        title: "Acervo",
-        url: "/acervo",
-        icon: Library,
         roles: ["admin", "aprovador", "equipe_conteudo"],
       },
       {
