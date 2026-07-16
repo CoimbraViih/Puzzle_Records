@@ -16,9 +16,8 @@ function roleAllowsRoute(role: Role, pathname: string) {
     return role === "admin";
   }
   if (pathname.startsWith("/aprovacao")) {
-    return role === "admin" || role === "aprovador";
+    return role === "admin" || role === "aprovador" || role === "equipe_conteudo";
   }
-  if (pathname.startsWith("/conteudo")) return true;
   return true;
 }
 

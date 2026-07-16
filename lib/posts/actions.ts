@@ -20,7 +20,6 @@ import type {
 export type PostFormState = { error?: string; success?: boolean } | undefined;
 
 function revalidatePostPages() {
-  revalidatePath("/conteudo");
   revalidatePath("/aprovacao");
   revalidatePath("/admin");
 }

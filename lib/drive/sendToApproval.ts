@@ -91,7 +91,6 @@ export async function sendDriveItemToApproval(
   }
 
   revalidatePath("/drive");
-  revalidatePath("/conteudo");
   revalidatePath("/aprovacao");
   return {};
 }

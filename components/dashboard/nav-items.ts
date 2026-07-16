@@ -4,7 +4,6 @@ import {
   CheckSquare,
   FolderOpen,
   LayoutDashboard,
-  LayoutGrid,
   Shield,
 } from "lucide-react";
 
@@ -37,12 +36,6 @@ const NAV_GROUPS: NavGroup[] = [
         roles: ["admin", "aprovador", "equipe_conteudo"],
       },
       {
-        title: "Fila de posts",
-        url: "/conteudo",
-        icon: LayoutGrid,
-        roles: ["admin", "aprovador", "equipe_conteudo"],
-      },
-      {
         title: "Drive",
         url: "/drive",
         icon: FolderOpen,
@@ -58,7 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
         title: "Fila de aprovação",
         url: "/aprovacao",
         icon: CheckSquare,
-        roles: ["admin", "aprovador"],
+        roles: ["admin", "aprovador", "equipe_conteudo"],
       },
     ],
   },

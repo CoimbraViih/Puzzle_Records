@@ -32,7 +32,10 @@ export default async function DashboardPage() {
     ])
   ) as Record<(typeof POST_STATUSES)[number], number>;
 
-  const canSeeAprovacao = profile?.role === "admin" || profile?.role === "aprovador";
+  const canSeeAprovacao =
+    profile?.role === "admin" ||
+    profile?.role === "aprovador" ||
+    profile?.role === "equipe_conteudo";
 
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-10 md:px-8">
@@ -97,13 +100,6 @@ export default async function DashboardPage() {
           Acesso rápido
         </h2>
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<Link href="/conteudo" />}
-          >
-            Fila de posts
-          </Button>
           {canSeeAprovacao && (
             <Button
               variant="outline"
