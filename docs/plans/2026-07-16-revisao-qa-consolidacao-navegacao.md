@@ -10,6 +10,11 @@
 
 **Spec:** `docs/superpowers/specs/2026-07-16-revisao-qa-consolidacao-navegacao-design.md`
 
+## Global Constraints
+
+- **Nunca rode `git add -A` ou `git add .`.** Sempre liste os arquivos exatos no `git add`. O working tree tem uma mudança não commitada e intencional em `lib/auth/get-current-profile.ts` (marcada `TEMP DEMO MODE — NÃO COMMITAR` no próprio código) e um diretório `skills/` não rastreado — nenhum dos dois tem relação com este plano e **nenhum commit de nenhuma task pode incluí-los**. Antes de cada commit, rode `git status --short` e confirme que só os arquivos que você mesmo criou/editou para a task aparecem staged.
+- Todo commit vai direto pra `main` seguido de `git push origin main` (workflow do projeto, ver `docs/CLAUDE.md`) — não crie branches nem worktrees.
+
 ---
 
 ## Ordem das fases
@@ -692,10 +697,13 @@ Run: `npm run dev`, confirme que `/acervo` não aparece mais no menu e que acess
 **Step 7: Commit**
 
 ```bash
-git add -A
+git status --short
+git add "app/(dashboard)/acervo" components/acervo/acervo-board.tsx components/acervo/filterable-acervo-board.tsx components/acervo/acervo-form-dialog.tsx lib/acervo/classify.ts lib/acervo/queries.ts components/dashboard/nav-items.ts lib/acervo/actions.ts
 git commit -m "refactor: remove página Acervo (migrada para Drive)"
 git push origin main
 ```
+
+Confira o `git status --short` antes do `add` — deve mostrar só os arquivos listados acima (mais os `D` de arquivos já removidos via `git rm`). Se `lib/auth/get-current-profile.ts` ou `skills/` aparecerem, NÃO os inclua no `git add`.
 
 ---
 
@@ -817,10 +825,13 @@ Run: `npm run dev`, confirme que "Fila de posts" não aparece mais no menu, `/co
 **Step 7: Commit**
 
 ```bash
-git add -A
+git status --short
+git add "app/(dashboard)/conteudo" components/dashboard/nav-items.ts lib/posts/actions.ts lib/drive/sendToApproval.ts lib/acervo/actions.ts
 git commit -m "refactor: remove página Fila de Posts (funções migradas para Fila de Aprovação)"
 git push origin main
 ```
+
+Confira o `git status --short` antes do `add` — deve mostrar só os arquivos listados acima (mais o `D` de `app/(dashboard)/conteudo` já removido via `git rm`). Se `lib/auth/get-current-profile.ts` ou `skills/` aparecerem, NÃO os inclua no `git add`.
 
 ---
 
