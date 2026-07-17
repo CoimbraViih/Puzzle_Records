@@ -1,0 +1,11 @@
+-- Corrige achado de revisão final de branch: 0022_qa_test_runs.sql criou a
+-- tabela qa_test_runs com RLS (select para authenticated), mas nunca a
+-- adicionou à publicação supabase_realtime. Subscrições postgres_changes
+-- (usadas por components/admin/testes-panel.tsx via lib/supabase/client.ts)
+-- só recebem eventos de tabelas que são membro dessa publicação -- RLS
+-- controla quem pode ler, não quais tabelas emitem eventos de Realtime.
+-- Sem isso, o painel "Testes" nunca recebe push updates em um ambiente
+-- restaurado só a partir das migrations (o funcionamento aparente em QA
+-- manual anterior veio de um toggle feito fora do repositório, direto no
+-- dashboard do Supabase).
+alter publication supabase_realtime add table public.qa_test_runs;
