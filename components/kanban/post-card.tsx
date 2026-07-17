@@ -1,8 +1,6 @@
-import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import {
   approvePost,
-  deletePost,
   regenerateArt,
   retryPublish,
   selectCopyVariation,
@@ -15,6 +13,7 @@ import {
   type SocialAccount,
 } from "@/lib/types/social-account";
 
+import { DeletePostButton } from "./delete-post-button";
 import { InstagramPreviewDialog } from "./instagram-preview";
 import { PostFormDialog } from "./post-form-dialog";
 import { RejectDialog } from "./reject-dialog";
@@ -250,15 +249,7 @@ export function PostCard({
           )}
 
         {canDelete(post, role, currentUserId) && (
-          <form action={deletePost.bind(null, post.id)}>
-            <ConfirmSubmitButton
-              variant="ghost"
-              size="sm"
-              confirmMessage="Excluir este post? Essa ação não pode ser desfeita."
-            >
-              Excluir
-            </ConfirmSubmitButton>
-          </form>
+          <DeletePostButton postId={post.id} />
         )}
 
         {(post.rendered_art_signed_url || post.media_signed_url) && (

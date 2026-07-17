@@ -285,7 +285,15 @@ export async function updatePost(
   return { success: true };
 }
 
-export async function deletePost(postId: string, _formData: FormData) {
+export async function deletePost(
+  _prevState: PostFormState,
+  formData: FormData
+): Promise<PostFormState> {
+  const postId = String(formData.get("post_id") ?? "");
+  if (!postId) {
+    return { error: "Post inválido." };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("posts")
@@ -299,10 +307,14 @@ export async function deletePost(postId: string, _formData: FormData) {
       postId,
       error
     );
-    return;
+    return {
+      error:
+        "Não foi possível excluir este post. Verifique se você ainda tem permissão.",
+    };
   }
 
   revalidatePostPages();
+  return { success: true };
 }
 
 async function updateStatus(
