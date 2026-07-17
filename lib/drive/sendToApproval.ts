@@ -41,7 +41,7 @@ export async function sendDriveItemToApproval(
 
   const resolution = await resolveSocialAccount(supabase);
   if (!resolution.socialAccountId) {
-    return { error: "Nenhuma conta social cadastrada — configure em /admin/contas." };
+    return { error: "Nenhuma conta social cadastrada — configure em /admin (aba Contas sociais)." };
   }
 
   // Ação disparada por clique manual (não pelo cron automático) — grava o

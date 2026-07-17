@@ -26,6 +26,14 @@ export default async function AdminPage({
   const initialTab: TabValue = TABS.some((t) => t.value === tab)
     ? (tab as TabValue)
     : "contas";
+  // Roda em toda visita a /admin, não só quando a aba "Testes" está ativa —
+  // inerente à composição RSC+Tabs client-side: os 4 painéis são Server
+  // Components renderizados de uma vez só antes de chegar no client, então
+  // a troca de aba é instantânea (sem navegação) mas não evita o fetch dos
+  // painéis não visíveis. Mesma coisa vale pra ContasPanel/IntegracoesPanel/
+  // UsuariosPanel. Consulta é barata (select indexado por created_at,
+  // limit 100) — não vale trocar a troca instantânea de aba por navegação
+  // completa só pra evitar isso.
   const testRuns = await listRecentTestRuns();
 
   return (

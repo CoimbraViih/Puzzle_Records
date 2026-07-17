@@ -25,7 +25,7 @@ export function createOAuth2Client() {
 /**
  * Autentica no Google Drive via OAuth2 (troca da Service Account — ver
  * docs/superpowers/specs/2026-07-14-google-drive-oauth-design.md). O
- * refresh token é obtido uma única vez pelo admin em /admin/integracoes e
+ * refresh token é obtido uma única vez pelo admin em /admin (aba Integrações) e
  * reaproveitado para sempre pelo cron de ingestão; a lib googleapis renova
  * o access token sozinha a cada chamada.
  */

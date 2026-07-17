@@ -9,7 +9,7 @@ async function getCutProBalanceLabel(): Promise<string> {
     const { balance } = await getCutProProvider().getBalance();
     return `Conectado — ${balance} créditos disponíveis.`;
   } catch (err) {
-    console.error("Falha ao consultar saldo Cut.Pro em /admin/integracoes:", err);
+    console.error("Falha ao consultar saldo Cut.Pro em /admin (aba Integrações):", err);
     return "Conectado, mas não foi possível consultar o saldo agora.";
   }
 }

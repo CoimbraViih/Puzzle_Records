@@ -72,7 +72,7 @@ export function ManualPostDialog({
                 </select>
                 {instagramAccounts.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Nenhuma conta Instagram cadastrada em /admin/contas.
+                    Nenhuma conta Instagram cadastrada em /admin (aba Contas sociais).
                   </p>
                 )}
               </div>

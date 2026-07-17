@@ -37,7 +37,7 @@ export async function addSocialAccountFromZernio(formData: FormData): Promise<vo
     .eq("zernio_account_id", zernioAccountId)
     .maybeSingle();
   if (existing) {
-    revalidatePath("/admin/contas");
+    revalidatePath("/admin");
     return;
   }
 
@@ -51,7 +51,7 @@ export async function addSocialAccountFromZernio(formData: FormData): Promise<vo
   if (error) {
     console.error("[admin/contas] falha ao criar conta a partir do Zernio:", error);
   }
-  revalidatePath("/admin/contas");
+  revalidatePath("/admin");
 }
 
 export async function createSocialAccount(
@@ -80,7 +80,7 @@ export async function createSocialAccount(
     return { error: "Não foi possível salvar a conta social." };
   }
 
-  revalidatePath("/admin/contas");
+  revalidatePath("/admin");
   return undefined;
 }
 
@@ -100,7 +100,7 @@ export async function updateZernioAccountId(
   if (error) {
     console.error("Falha ao atualizar zernio_account_id:", accountId, error);
   }
-  revalidatePath("/admin/contas");
+  revalidatePath("/admin");
 }
 
 export async function updateAcervoSlots(
@@ -122,7 +122,7 @@ export async function updateAcervoSlots(
   if (error) {
     console.error("Falha ao atualizar acervo_daily_slots:", accountId, error);
   }
-  revalidatePath("/admin/contas");
+  revalidatePath("/admin");
 }
 
 export async function deleteSocialAccount(
@@ -134,5 +134,5 @@ export async function deleteSocialAccount(
   if (error) {
     console.error("Falha ao excluir conta social:", error);
   }
-  revalidatePath("/admin/contas");
+  revalidatePath("/admin");
 }

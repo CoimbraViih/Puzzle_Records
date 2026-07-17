@@ -8,7 +8,7 @@ export interface SocialAccountResolution {
 /**
  * Conta única (decisão de 10/07/2026, PLAN.md) — não há mais matching por
  * handle no metadado do Drive, só a única linha de social_accounts
- * cadastrada em /admin/contas. Sem conta cadastrada (ou mais de uma,
+ * cadastrada em /admin (aba Contas sociais). Sem conta cadastrada (ou mais de uma,
  * configuração inválida), o post é criado do mesmo jeito com aviso
  * visível — nunca falha em silêncio.
  */
@@ -20,7 +20,7 @@ export async function resolveSocialAccount(
   if (error || !data || data.length === 0) {
     return {
       socialAccountId: null,
-      warning: "Nenhuma conta social cadastrada em /admin/contas.",
+      warning: "Nenhuma conta social cadastrada em /admin (aba Contas sociais).",
     };
   }
 

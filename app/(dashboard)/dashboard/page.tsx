@@ -76,8 +76,8 @@ export default async function DashboardPage() {
       {disconnectedAccounts.length > 0 && (
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
           {disconnectedAccounts.length === 1
-            ? `A conta ${disconnectedAccounts[0].display_name} parece estar desconectada — verifique em /admin/contas.`
-            : `${disconnectedAccounts.length} contas parecem estar desconectadas — verifique em /admin/contas.`}
+            ? `A conta ${disconnectedAccounts[0].display_name} parece estar desconectada — verifique em /admin (aba Contas sociais).`
+            : `${disconnectedAccounts.length} contas parecem estar desconectadas — verifique em /admin (aba Contas sociais).`}
         </div>
       )}
 

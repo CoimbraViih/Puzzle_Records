@@ -172,7 +172,7 @@ export async function GET(request: Request) {
       await recordPublishError(
         post.id,
         !zernioAccountId
-          ? "Conta social sem zernio_account_id configurado (ver /admin/contas)."
+          ? "Conta social sem zernio_account_id configurado (ver /admin, aba Contas sociais)."
           : "Post sem conta social vinculada."
       );
       continue;

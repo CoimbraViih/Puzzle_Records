@@ -363,7 +363,7 @@ export interface ZernioAccount {
 
 /**
  * GET /accounts (testado contra a API real em 16/07/2026) — lista as contas
- * já conectadas no workspace do Zernio. Usado só por /admin/contas pra
+ * já conectadas no workspace do Zernio. Usado só por /admin (aba Contas sociais) pra
  * eliminar a cópia manual do ID do Zernio (decisão de sessão, ver PLAN.md):
  * em vez do usuário caçar o ID no painel do Zernio e colar num campo de
  * texto, a tela mostra as contas já conectadas lá e cria/associa
