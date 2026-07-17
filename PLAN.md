@@ -387,6 +387,24 @@ processamento desperdiçado, não corrupção de dado.
 
 ---
 
+## M17 — Revisão QA + consolidação de navegação (sessão de 16–17/07/2026) ✅
+
+**Objetivo**: revisão completa do painel — caça a bugs, teste end-to-end dos fluxos principais, remoção de duas seções redundantes (Acervo, Fila de Posts) já cobertas por outras partes do sistema, consolidação das três páginas de administração num painel único, e uma tela de log de testes em tempo real pra acompanhar a própria revisão. Spec completa em `docs/superpowers/specs/2026-07-16-revisao-qa-consolidacao-navegacao-design.md`, plano de implementação em `docs/plans/2026-07-16-revisao-qa-consolidacao-navegacao.md`.
+
+- [x] **Tela de log de testes em tempo real**: nova tabela `qa_test_runs` (migrations `0022`/`0023` — a segunda corrige a publicação `supabase_realtime`, esquecida na primeira e só pega em revisão final de branch) + `lib/qa/log.ts`/`queries.ts` + `components/admin/testes-panel.tsx`, aba "Testes" dentro do painel admin consolidado abaixo.
+- [x] **Painel admin consolidado**: `/admin/contas`, `/admin/integrações` e `/admin/usuários` viraram abas de uma única `/admin` (`components/ui/tabs.tsx`, wrapper sobre `@base-ui/react/tabs`); rotas antigas agora redirecionam pra `/admin?tab=...` em vez de sumir (preserva bookmarks). `/admin/integracoes/callback` (redirect URI fixo do OAuth do Google) não foi tocado.
+- [x] **Acervo removido, migrado pro Drive**: cadastro manual em massa (upload + legenda direta, sem IA) e o agendamento automático de slots diários (cron `acervo-schedule`, intocado) migraram pra um botão "Cadastro manual" na página `/drive` — validado ao vivo contra produção (criar → aprovar → cron agenda sozinho) antes de apagar `/acervo`. `content_source = 'acervo'` continua existindo no banco, só a UI de origem mudou de lugar.
+- [x] **Fila de Posts removida, funções migradas pra Fila de Aprovação**: "Novo post" e "Post rápido" (vídeo com IA) agora vivem em `/aprovacao` — as duas páginas já renderizavam o mesmo board/ações de revisão, só a criação era exclusiva de `/conteudo`. **Achado no meio da implementação, não no plano original**: o papel `equipe_conteudo` só alcançava o board via `/conteudo` (nav-items.ts e `lib/supabase/proxy.ts` não davam acesso de rota a `/aprovacao` pra esse papel) — apagar a página sem ajustar isso teria travado esse papel fora do sistema por completo. Corrigido liberando acesso de rota (nav + proxy) mantendo aprovar/rejeitar restrito a aprovador/admin (já garantido em duas camadas independentes: `post-card.tsx`/`canDecide()` e RLS). `next.config.ts` também migrou a entrada de `outputFileTracingIncludes` do ffmpeg-static de `/conteudo` pra `/aprovacao` (senão o post rápido de vídeo quebraria em produção apesar de funcionar local).
+- [x] **QA end-to-end**: 12 de 13 fluxos testados ao vivo contra produção (login, geração de legenda de imagem, cadastro manual no Drive, editar/reenviar/regerar arte/excluir/preview/post rápido/novo post na fila, abas do admin, aprovar+agendar). Um bug real achado e corrigido: `lib/openai/generateCopy.ts` quebrava com `TypeError` quando o OpenRouter (modo de teste gratuito) respondia HTTP 200 sem o campo `choices`.
+- [ ] **Edição com template Cut.Pro não testada nesta sessão** — gastaria crédito real da API (`CUTPRO_API_KEY` tinha 347 créditos, saldo confirmado) e não seguimos sem autorização explícita do Victor; pendente de decisão, não é um bug conhecido.
+- [ ] **Débito cosmético aceito** (achado na revisão final de branch, não bloqueante): `revalidatePath` desatualizado em `components/admin/contas-actions.ts` (aponta pra rota antiga, inofensivo já que `/admin` é `force-dynamic`); `listRecentTestRuns()` roda em toda visita a `/admin` independente da aba ativa; textos de erro/comentários residuais citando `/admin/contas`/`/admin/integracoes` em vez de `/admin` (rotas antigas ainda funcionam via redirect, só o texto ficou desatualizado).
+
+**Limpeza pós-sessão**: branches remotas órfãs de milestones antigos já mergeados (`m9-analytics-alertas`, `worktree-m4-copy-openai`, `worktree-m6-fila-aprovacao`, `worktree-m8-acervo`, `worktree-pivo-conta-unica-ia-multimodal`, `worktree-sidebar-navegacao`) apagadas do GitHub; worktree local órfão removido. Repositório fica só com `main` — todo o desenvolvimento deste projeto vai direto pra `main` (ver `docs/CLAUDE.md`), nunca houve merge de fato a fazer nesta sessão.
+
+**Pronto para avançar quando**: alguém testar a edição com template Cut.Pro com autorização de gasto e confirmar que o caminho ponta a ponta (Drive → template → legendas embutidas → aprovação) funciona igual ao resto do M16.
+
+---
+
 ## Cronograma e custos revisados (M11–M16)
 
 | Semana | Entrega | Custo mensal acumulado |
