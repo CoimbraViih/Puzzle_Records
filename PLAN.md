@@ -446,6 +446,22 @@ processamento desperdiçado, não corrupção de dado.
 
 ---
 
+## M20 — Edição com template (Cut.Pro) padronizada em todos os fluxos de vídeo (sessão de 19/07/2026) ✅
+
+**Gatilho**: pedido do Victor pra deixar "todo tipo de post" padronizado com edição via template — até então, só o fluxo curado do Drive tinha a opção. Brainstorming em sessão (19/07/2026) decidiu escopo (Post rápido/Novo post + cadastro manual de acervo ganham a opção; Drive não muda) e obrigatoriedade (opcional, mesmo botão do Drive, nunca bloqueia "Enviar para aprovação"). Spec completa em `docs/superpowers/specs/2026-07-19-cutpro-template-editing-todos-fluxos-design.md`.
+
+- [x] **Migration `0028_posts_cutpro_columns.sql`**: espelha em `posts` as mesmas colunas de estado do Cut.Pro que `drive_items` já tinha desde a `0019` (`edit_status`, `cutpro_video_id/submission_id/clip_id/template_id/render_id`, `cutpro_error`, `edited_media_path`) — reaproveita a máquina de estados já validada em produção em vez de forçar um fluxo artificial via `drive_items`. A janela de edição é o período em que o post já existe mas ainda está em `status: "rascunho"` (confirmado no código: `createPostWithAI`/cadastro de acervo já criam como `rascunho`, com uma ação `submitForApproval` separada da criação).
+- [x] **`lib/cutpro/pipeline.ts` generalizado**: `advanceDriveItemEdit` virou `advanceCutProEdit(supabase, table, item)`, aceitando `"drive_items" | "posts"` — cada `.from("drive_items")` interno virou `.from(table)`, mesma lógica, zero duplicação. Diferença só no passo final (`finalizeRender`): pra `posts`, além de gravar `edited_media_path`, também atualiza `rendered_art_url` (confirmado que é esse campo que `publish-scheduled` de fato usa pra publicar, via `lib/posts/pendingPublish.ts`) — `drive_items` resolve isso depois, só ao enviar pra aprovação (D5).
+- [x] **Cron `cutpro-pipeline`**: passa a buscar itens elegíveis nas duas tabelas por ciclo. `posts` não tem um "nome de arquivo" separado do path de Storage como `drive_items` tem (`filename` vs `media_storage_path`) — resolvido com alias no `select` do PostgREST (`filename:media_url, media_storage_path:media_url`), testado direto contra a API REST de produção nesta sessão (confirma que a query aliasada retorna exatamente o formato que `CutProEditableRow` espera).
+- [x] **Nova action `startCutProEditForPost`** (`lib/posts/actions.ts`), espelhando `startCutProEdit` (`lib/drive/actions.ts`) — mesmo update condicional (trava contra clique duplo), com a checagem extra de `status = "rascunho"` (só edita antes de ir pra aprovação).
+- [x] **`EditWithTemplateButton` generalizado** (`components/drive/edit-with-template-button.tsx`) pra aceitar `{ kind: "drive"; driveItemId }` ou `{ kind: "post"; postId }` e chamar a action certa; `EDIT_STATUS_LABEL` extraído pra `lib/cutpro/labels.ts`, compartilhado entre `drive-item-card.tsx` e o novo uso em `post-card.tsx`.
+- [x] **`post-card.tsx`**: botão "Editar com template" quando `media_type === "video" && status === "rascunho" && edit_status in (nao_editado, erro)` e o usuário pode editar o post; status de edição e `cutpro_error` visíveis no card, mesmo padrão do Drive.
+- [x] **Testado nesta sessão** (sem gastar crédito real do Cut.Pro — a lógica interna do pipeline já foi validada em produção contra `drive_items` no M16/M17, o que era novo aqui é só o roteamento pra tabela certa): query aliasada do cron confirmada contra a API REST real; gate da nova action testado com um post real fora de `rascunho` (rejeitado corretamente, 0 linhas) e um post de teste em `rascunho` (aceito corretamente, 1 linha, `edit_status` avançou pra `enviando`) — dado de teste removido depois. `npx tsc --noEmit`, `npm run lint`, `npm run build` limpos.
+
+**Pronto para avançar quando**: um vídeo de Post rápido ou acervo puder ser editado com o template da casa pelo mesmo botão do Drive — validação com crédito real do Cut.Pro (upload → clipagem → render) fica para quando o Victor quiser autorizar o gasto, mesmo padrão de autorização explícita já usado no M17 para esse tipo de teste.
+
+---
+
 ## Cronograma e custos revisados (M11–M16)
 
 | Semana | Entrega | Custo mensal acumulado |

@@ -6,10 +6,22 @@ import { probeVideo } from "./probeVideo";
 
 const MEDIA_BUCKET = "posts-media";
 
+/** As duas tabelas que podem ter um item em edição pelo Cut.Pro — ver
+ * docs/superpowers/specs/2026-07-19-cutpro-template-editing-todos-fluxos-design.md.
+ * `drive_items` é o fluxo curado original do Drive (M16); `posts` cobre
+ * Post rápido/Novo post e cadastro manual de acervo, que criam o post
+ * direto (sem passar por drive_items) mas têm as mesmas colunas de
+ * estado do Cut.Pro (migration 0028). */
+export type CutProTable = "drive_items" | "posts";
+
 /** Só os campos que a máquina de estados do Cut.Pro precisa — deliberadamente
  * separado de DriveItemRow (lib/drive/queries.ts, usado pela UI) porque a
- * página /drive não precisa saber de cutpro_video_id/submission_id/render_id. */
-export interface CutProDriveItem {
+ * página /drive não precisa saber de cutpro_video_id/submission_id/render_id.
+ * Pra `posts`, a query que monta essa linha usa alias (`media_url` vira
+ * `media_storage_path`, `media_url` também vira `filename` — posts não tem
+ * um "nome de arquivo" separado do path de Storage, e o path já sai com a
+ * extensão certa) — ver app/api/cron/cutpro-pipeline/route.ts. */
+export interface CutProEditableRow {
   id: string;
   filename: string;
   media_storage_path: string | null;
@@ -27,21 +39,23 @@ function extensionFromPath(path: string): string {
 
 async function markError(
   supabase: SupabaseClient,
+  table: CutProTable,
   itemId: string,
   fromStatus: string,
   message: string
 ): Promise<void> {
-  console.error(`[cutpro-pipeline] item ${itemId} (${fromStatus}) -> erro:`, message);
+  console.error(`[cutpro-pipeline] ${table} ${itemId} (${fromStatus}) -> erro:`, message);
   await supabase
-    .from("drive_items")
+    .from(table)
     .update({ edit_status: "erro", cutpro_error: message })
     .eq("id", itemId)
     .eq("edit_status", fromStatus);
 }
 
 /**
- * Avança UM item de `drive_items` um passo na máquina de estados do Cut.Pro
- * (M16/D4). Cada chamada faz só uma transição — o cron `cutpro-pipeline`
+ * Avança UM item (de `drive_items` ou `posts`) um passo na máquina de
+ * estados do Cut.Pro (M16/D4, generalizada em 19/07/2026 pra também cobrir
+ * `posts`). Cada chamada faz só uma transição — o cron `cutpro-pipeline`
  * (5 min) chama isso por item elegível, mesmo espírito de polling do
  * `poll-video-render` (M14): nunca bloqueia dentro de uma execução do cron
  * esperando um job assíncrono do fornecedor terminar.
@@ -51,55 +65,57 @@ async function markError(
  * já saem com `has_template_applied: true`, então o estado `aplicando` não
  * é usado no caminho feliz (reservado só como fallback, hoje sem chamador).
  */
-export async function advanceDriveItemEdit(
+export async function advanceCutProEdit(
   supabase: SupabaseClient,
-  item: CutProDriveItem
+  table: CutProTable,
+  item: CutProEditableRow
 ): Promise<void> {
   const cutpro = getCutProProvider();
 
   try {
     if (item.edit_status === "enviando") {
-      await stepEnviando(supabase, item, cutpro);
+      await stepEnviando(supabase, table, item, cutpro);
       return;
     }
     if (item.edit_status === "clipando") {
-      await stepClipando(supabase, item, cutpro);
+      await stepClipando(supabase, table, item, cutpro);
       return;
     }
     if (item.edit_status === "renderizando") {
-      await stepRenderizando(supabase, item, cutpro);
+      await stepRenderizando(supabase, table, item, cutpro);
       return;
     }
   } catch (err) {
     if (err instanceof CutProRateLimitError) {
       // 429 BATCH_ALREADY_RUNNING — não é erro real, só tenta de novo no
       // próximo ciclo do cron (não grava cutpro_error nem muda edit_status).
-      console.warn(`[cutpro-pipeline] item ${item.id} — rate limit, retry no próximo ciclo:`, err.message);
+      console.warn(`[cutpro-pipeline] ${table} ${item.id} — rate limit, retry no próximo ciclo:`, err.message);
       return;
     }
     const message = err instanceof Error ? err.message : "Erro desconhecido no pipeline Cut.Pro.";
-    await markError(supabase, item.id, item.edit_status, message);
+    await markError(supabase, table, item.id, item.edit_status, message);
   }
 }
 
 async function stepEnviando(
   supabase: SupabaseClient,
-  item: CutProDriveItem,
+  table: CutProTable,
+  item: CutProEditableRow,
   cutpro: ReturnType<typeof getCutProProvider>
 ): Promise<void> {
   if (!item.media_storage_path) {
-    await markError(supabase, item.id, "enviando", "Item sem mídia no Storage.");
+    await markError(supabase, table, item.id, "enviando", "Item sem mídia no Storage.");
     return;
   }
   if (!item.cutpro_template_id) {
-    await markError(supabase, item.id, "enviando", "Item sem template Cut.Pro selecionado.");
+    await markError(supabase, table, item.id, "enviando", "Item sem template Cut.Pro selecionado.");
     return;
   }
 
   if (item.cutpro_video_id) {
     // Upload já iniciado numa execução anterior (retomável) — só avança.
     const { error } = await supabase
-      .from("drive_items")
+      .from(table)
       .update({ edit_status: "clipando" })
       .eq("id", item.id)
       .eq("edit_status", "enviando");
@@ -119,10 +135,9 @@ async function stepEnviando(
   const probe = await probeVideo(mediaBuffer, extension);
 
   // Cut.Pro valida a extensão do `file_name` em si (INVALID_FILE_TYPE se
-  // não for .mp4/.mov/.webm/.mkv) — o nome original do arquivo no Drive
-  // (item.filename) não é confiável pra isso (pode vir sem extensão, ex.:
-  // um arquivo chamado só "video"). Usa sempre a extensão real do Storage
-  // (media_storage_path, atribuída no mirror) com o nome original como base.
+  // não for .mp4/.mov/.webm/.mkv) — o nome original do arquivo (item.filename)
+  // não é confiável pra isso (pode vir sem extensão). Usa sempre a extensão
+  // real do Storage (media_storage_path) com o nome original como base.
   const cutproFileName = item.filename.toLowerCase().endsWith(`.${extension}`)
     ? item.filename
     : `${item.filename}.${extension}`;
@@ -153,6 +168,7 @@ async function stepEnviando(
   if (completed.forceWatermark) {
     await markError(
       supabase,
+      table,
       item.id,
       "enviando",
       "O plano Cut.Pro atual gera vídeo com marca d'água (force_watermark=true) — confirme o plano contratado."
@@ -161,7 +177,7 @@ async function stepEnviando(
   }
 
   const { error } = await supabase
-    .from("drive_items")
+    .from(table)
     .update({ cutpro_video_id: upload.videoId, edit_status: "clipando", cutpro_error: null })
     .eq("id", item.id)
     .eq("edit_status", "enviando");
@@ -170,11 +186,12 @@ async function stepEnviando(
 
 async function stepClipando(
   supabase: SupabaseClient,
-  item: CutProDriveItem,
+  table: CutProTable,
+  item: CutProEditableRow,
   cutpro: ReturnType<typeof getCutProProvider>
 ): Promise<void> {
   if (!item.cutpro_video_id) {
-    await markError(supabase, item.id, "clipando", "Item sem cutpro_video_id (estado inconsistente).");
+    await markError(supabase, table, item.id, "clipando", "Item sem cutpro_video_id (estado inconsistente).");
     return;
   }
 
@@ -183,7 +200,7 @@ async function stepClipando(
       templateId: item.cutpro_template_id ?? undefined,
     });
     const { error } = await supabase
-      .from("drive_items")
+      .from(table)
       .update({ cutpro_submission_id: submission.submissionId })
       .eq("id", item.id)
       .eq("edit_status", "clipando");
@@ -195,6 +212,7 @@ async function stepClipando(
   if (submission.status === "failed") {
     await markError(
       supabase,
+      table,
       item.id,
       "clipando",
       submission.errorCode ?? "Clipagem por IA falhou (sem código de erro)."
@@ -208,12 +226,12 @@ async function stepClipando(
   const clips = await cutpro.listClips(item.cutpro_video_id, item.cutpro_submission_id);
   const bestClip = [...clips].sort((a, b) => b.rating - a.rating)[0];
   if (!bestClip) {
-    await markError(supabase, item.id, "clipando", "Clipagem concluída sem nenhum clipe gerado.");
+    await markError(supabase, table, item.id, "clipando", "Clipagem concluída sem nenhum clipe gerado.");
     return;
   }
 
   const { error } = await supabase
-    .from("drive_items")
+    .from(table)
     .update({ cutpro_clip_id: bestClip.id, edit_status: "renderizando" })
     .eq("id", item.id)
     .eq("edit_status", "clipando");
@@ -222,7 +240,8 @@ async function stepClipando(
 
 async function finalizeRender(
   supabase: SupabaseClient,
-  item: CutProDriveItem,
+  table: CutProTable,
+  item: CutProEditableRow,
   downloadUrl: string
 ): Promise<void> {
   // Mesmo raciocínio do upload: baixa direto da CDN do Cut.Pro e sobe pro
@@ -240,9 +259,23 @@ async function finalizeRender(
     throw new Error(`Falha ao subir vídeo editado pro Storage: ${uploadError.message}`);
   }
 
+  // `drive_items`: rendered_art_url só é resolvido depois, ao enviar pra
+  // aprovação (sendDriveItemToApproval, D5). `posts`: o post já existe e
+  // pode já estar visível na fila, então já atualiza rendered_art_url aqui
+  // — é o campo que publish-scheduled de fato usa pra publicar
+  // (lib/posts/pendingPublish.ts).
+  const updatePayload: Record<string, unknown> = {
+    edited_media_path: editedPath,
+    edit_status: "editado",
+    cutpro_error: null,
+  };
+  if (table === "posts") {
+    updatePayload.rendered_art_url = editedPath;
+  }
+
   const { error } = await supabase
-    .from("drive_items")
-    .update({ edited_media_path: editedPath, edit_status: "editado", cutpro_error: null })
+    .from(table)
+    .update(updatePayload)
     .eq("id", item.id)
     .eq("edit_status", "renderizando");
   if (error) console.error("[cutpro-pipeline] falha ao gravar edited_media_path:", error);
@@ -250,28 +283,29 @@ async function finalizeRender(
 
 async function stepRenderizando(
   supabase: SupabaseClient,
-  item: CutProDriveItem,
+  table: CutProTable,
+  item: CutProEditableRow,
   cutpro: ReturnType<typeof getCutProProvider>
 ): Promise<void> {
   if (!item.cutpro_video_id || !item.cutpro_submission_id || !item.cutpro_clip_id) {
-    await markError(supabase, item.id, "renderizando", "Item sem clipe escolhido (estado inconsistente).");
+    await markError(supabase, table, item.id, "renderizando", "Item sem clipe escolhido (estado inconsistente).");
     return;
   }
 
   if (!item.cutpro_render_id) {
     const render = await cutpro.renderClip(item.cutpro_video_id, item.cutpro_submission_id, item.cutpro_clip_id);
     if (render.hasWatermark) {
-      await markError(supabase, item.id, "renderizando", "Render saiu com marca d'água (has_watermark=true).");
+      await markError(supabase, table, item.id, "renderizando", "Render saiu com marca d'água (has_watermark=true).");
       return;
     }
     // from_cache/status "completed" já vem com download_url pronto — pula
     // direto pro download, sem precisar de outro ciclo de polling.
     if (render.status === "completed" && render.downloadUrl) {
-      await finalizeRender(supabase, item, render.downloadUrl);
+      await finalizeRender(supabase, table, item, render.downloadUrl);
       return;
     }
     const { error } = await supabase
-      .from("drive_items")
+      .from(table)
       .update({ cutpro_render_id: render.renderId })
       .eq("id", item.id)
       .eq("edit_status", "renderizando");
@@ -281,7 +315,7 @@ async function stepRenderizando(
 
   const status = await cutpro.getRenderStatus(item.cutpro_render_id);
   if (status.status === "failed" || status.status === "cancelled" || status.status === "expired") {
-    await markError(supabase, item.id, "renderizando", `Render terminou com status "${status.status}".`);
+    await markError(supabase, table, item.id, "renderizando", `Render terminou com status "${status.status}".`);
     return;
   }
   if (status.status !== "completed") {
@@ -289,5 +323,5 @@ async function stepRenderizando(
   }
 
   const { url } = await cutpro.getRenderDownloadUrl(item.cutpro_render_id);
-  await finalizeRender(supabase, item, url);
+  await finalizeRender(supabase, table, item, url);
 }

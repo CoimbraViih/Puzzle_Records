@@ -4,17 +4,8 @@ import { EditWithTemplateButton } from "@/components/drive/edit-with-template-bu
 import { GenerateCaptionButton } from "@/components/drive/generate-caption-button";
 import { SendToApprovalButton } from "@/components/drive/send-to-approval-button";
 import { SetContextButton } from "@/components/drive/set-context-button";
+import { EDIT_STATUS_LABEL } from "@/lib/cutpro/labels";
 import type { DriveItemRow } from "@/lib/drive/queries";
-
-const EDIT_STATUS_LABEL: Record<DriveItemRow["edit_status"], string> = {
-  nao_editado: "Não editado",
-  enviando: "Enviando pro Cut.Pro…",
-  clipando: "Clipando…",
-  aplicando: "Aplicando template…",
-  renderizando: "Renderizando…",
-  editado: "Editado",
-  erro: "Erro na edição",
-};
 
 export function DriveItemCard({ item }: { item: DriveItemRow }) {
   const previewUrl = item.edited_media_signed_url ?? item.media_signed_url;
@@ -78,7 +69,7 @@ export function DriveItemCard({ item }: { item: DriveItemRow }) {
           ) : null}
           {item.media_type === "video" &&
           (item.edit_status === "nao_editado" || item.edit_status === "erro") ? (
-            <EditWithTemplateButton driveItemId={item.id} />
+            <EditWithTemplateButton kind="drive" driveItemId={item.id} />
           ) : null}
           {item.cutpro_error ? <p className="text-xs text-destructive">{item.cutpro_error}</p> : null}
           {item.caption ? <SendToApprovalButton driveItemId={item.id} /> : null}
