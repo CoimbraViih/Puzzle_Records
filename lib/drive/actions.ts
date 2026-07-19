@@ -79,3 +79,34 @@ export async function startCutProEdit(driveItemId: string): Promise<{ error?: st
   revalidatePath("/drive");
   return {};
 }
+
+/**
+ * Grava o contexto manual (source_fact) de um item do Drive — cobre o caso
+ * em que o .json de metadado não veio com fato, ou a heurística de nome de
+ * arquivo (lib/drive/filenameContext.ts) não achou nada aproveitável.
+ * generateDriveItemCaption (lib/drive/caption.ts) bloqueia a geração de
+ * legenda de imagem sem source_fact — este é o caminho para preenchê-lo
+ * direto no painel, sem depender de re-subir o arquivo no Drive.
+ */
+export async function updateDriveItemContext(
+  driveItemId: string,
+  context: string
+): Promise<{ error?: string }> {
+  const trimmed = context.trim();
+  if (!trimmed) {
+    return { error: "Digite um contexto para a IA usar na legenda." };
+  }
+
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("drive_items")
+    .update({ source_fact: trimmed, caption_error: null })
+    .eq("id", driveItemId);
+
+  if (error) {
+    return { error: "Não foi possível salvar o contexto." };
+  }
+
+  revalidatePath("/drive");
+  return {};
+}

@@ -3,6 +3,7 @@ import { FileVideo } from "lucide-react";
 import { EditWithTemplateButton } from "@/components/drive/edit-with-template-button";
 import { GenerateCaptionButton } from "@/components/drive/generate-caption-button";
 import { SendToApprovalButton } from "@/components/drive/send-to-approval-button";
+import { SetContextButton } from "@/components/drive/set-context-button";
 import type { DriveItemRow } from "@/lib/drive/queries";
 
 const EDIT_STATUS_LABEL: Record<DriveItemRow["edit_status"], string> = {
@@ -26,9 +27,16 @@ export function DriveItemCard({ item }: { item: DriveItemRow }) {
           src={previewUrl}
           alt={item.filename}
           className="h-40 w-full rounded-md border border-border object-cover"
+          loading="lazy"
+          decoding="async"
         />
       ) : previewUrl && item.media_type === "video" ? (
-        <video src={previewUrl} controls className="h-40 w-full rounded-md border border-border object-cover" />
+        <video
+          src={previewUrl}
+          controls
+          preload="metadata"
+          className="h-40 w-full rounded-md border border-border object-cover"
+        />
       ) : (
         <div className="flex h-40 w-full items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
           Mídia ainda não disponível
@@ -50,7 +58,15 @@ export function DriveItemCard({ item }: { item: DriveItemRow }) {
       ) : null}
       {!item.post_id ? (
         <>
-          <GenerateCaptionButton driveItemId={item.id} />
+          <div className="flex flex-wrap gap-2">
+            <SetContextButton driveItemId={item.id} currentContext={item.source_fact} />
+            <GenerateCaptionButton driveItemId={item.id} />
+          </div>
+          {item.media_type === "image" && !item.source_fact ? (
+            <p className="text-xs text-muted-foreground">
+              Imagem sem contexto — clique em &quot;Criar contexto&quot; antes de gerar a legenda.
+            </p>
+          ) : null}
           {item.caption_error ? (
             <p className="text-xs text-destructive">{item.caption_error}</p>
           ) : null}
