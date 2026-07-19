@@ -544,3 +544,37 @@ export async function retryPublish(postId: string, _formData: FormData) {
 
   revalidatePostPages();
 }
+
+/**
+ * Dispara a edição via Cut.Pro pra um post criado direto (Post rápido/Novo
+ * post, ou cadastro manual de acervo) — equivalente de startCutProEdit
+ * (lib/drive/actions.ts) pra quando o vídeo não passa por drive_items. Só
+ * marca o post pra entrar na máquina de estados do cron cutpro-pipeline
+ * (lib/cutpro/pipeline.ts, agora generalizado pra processar drive_items e
+ * posts), mesmo padrão de não fazer trabalho pesado numa Server Action.
+ * Opcional em todos os fluxos (nunca bloqueia "Enviar para aprovação") —
+ * ver docs/superpowers/specs/2026-07-19-cutpro-template-editing-todos-fluxos-design.md.
+ */
+export async function startCutProEditForPost(postId: string): Promise<{ error?: string }> {
+  const templateId = process.env.CUTPRO_HOUSE_TEMPLATE_ID;
+  if (!templateId) {
+    return { error: "CUTPRO_HOUSE_TEMPLATE_ID não configurado." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("posts")
+    .update({ cutpro_template_id: templateId, edit_status: "enviando", cutpro_error: null })
+    .eq("id", postId)
+    .eq("media_type", "video")
+    .eq("status", "rascunho")
+    .in("edit_status", ["nao_editado", "erro"])
+    .select("id");
+
+  if (error || !data || data.length === 0) {
+    return { error: "Não foi possível iniciar a edição (post já em edição, já enviado pra aprovação, ou inválido)." };
+  }
+
+  revalidatePostPages();
+  return {};
+}

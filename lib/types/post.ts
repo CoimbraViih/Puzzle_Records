@@ -80,6 +80,17 @@ export interface Post {
   approved_by: string | null;
   /** Preenchido pelo M8: distingue posts do Drive (M3) de upload manual de acervo. */
   content_source: ContentSource;
+  /** Colunas do Cut.Pro (migration 0028) — mesma máquina de estados de
+   * drive_items, pra Post rápido/Novo post e cadastro de acervo poderem
+   * usar "Editar com template" sem passar por drive_items. */
+  edit_status: "nao_editado" | "enviando" | "clipando" | "aplicando" | "renderizando" | "editado" | "erro";
+  cutpro_video_id: string | null;
+  cutpro_submission_id: string | null;
+  cutpro_clip_id: string | null;
+  cutpro_template_id: string | null;
+  cutpro_render_id: string | null;
+  cutpro_error: string | null;
+  edited_media_path: string | null;
   created_at: string;
   updated_at: string;
 }

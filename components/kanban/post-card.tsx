@@ -1,4 +1,6 @@
+import { EditWithTemplateButton } from "@/components/drive/edit-with-template-button";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { EDIT_STATUS_LABEL } from "@/lib/cutpro/labels";
 import {
   approvePost,
   regenerateArt,
@@ -66,6 +68,19 @@ function canRetryPublish(post: PostWithRelations, role: Role) {
     post.status === "aprovado" &&
     Boolean(post.publish_error) &&
     !post.post_url
+  );
+}
+
+/** Opcional em todos os fluxos que criam post direto (Post rápido/Novo
+ * post, acervo) — mesmo padrão do Drive: só aparece enquanto o post ainda
+ * está em rascunho (antes de "Enviar para aprovação"), nunca bloqueia o
+ * envio. Ver docs/superpowers/specs/2026-07-19-cutpro-template-editing-todos-fluxos-design.md. */
+function canEditWithTemplate(post: PostWithRelations, role: Role, userId: string) {
+  return (
+    post.media_type === "video" &&
+    post.status === "rascunho" &&
+    (post.edit_status === "nao_editado" || post.edit_status === "erro") &&
+    canEdit(post, role, userId)
   );
 }
 
@@ -204,6 +219,17 @@ export function PostCard({
         </p>
       )}
 
+      {post.media_type === "video" && post.edit_status !== "nao_editado" && (
+        <p className="text-xs text-muted-foreground">
+          Template: {EDIT_STATUS_LABEL[post.edit_status]}
+        </p>
+      )}
+      {post.cutpro_error && (
+        <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
+          Erro na edição com template: {post.cutpro_error}
+        </p>
+      )}
+
       <div className="mt-2 flex flex-wrap gap-2">
         {canEdit(post, role, currentUserId) && (
           <PostFormDialog
@@ -213,6 +239,10 @@ export function PostCard({
             triggerLabel="Editar"
             triggerVariant="outline"
           />
+        )}
+
+        {canEditWithTemplate(post, role, currentUserId) && (
+          <EditWithTemplateButton kind="post" postId={post.id} />
         )}
 
         {canSubmit(post, role, currentUserId) && (
