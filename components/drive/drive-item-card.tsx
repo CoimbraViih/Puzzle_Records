@@ -49,6 +49,9 @@ export function DriveItemCard({ item }: { item: DriveItemRow }) {
       {item.removed_from_drive ? (
         <p className="text-xs text-destructive">Removido do Drive (histórico preservado)</p>
       ) : null}
+      {item.mirror_error ? (
+        <p className="text-xs text-destructive">Erro ao sincronizar: {item.mirror_error}</p>
+      ) : null}
       <p className="text-xs text-muted-foreground">
         {item.caption ? "Legenda pronta" : "Sem legenda ainda"}
         {item.media_type === "video" ? ` · ${EDIT_STATUS_LABEL[item.edit_status]}` : ""}

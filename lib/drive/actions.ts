@@ -14,11 +14,11 @@ import { createServiceClient } from "@/lib/supabase/service";
  * service-role (mesmo motivo do cron: baixa/sobe mídia pro Storage sem
  * depender da sessão de quem clicou).
  */
-export async function refreshDriveMirror(): Promise<void> {
+export async function refreshDriveMirror(): Promise<{ error?: string }> {
   const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
   if (!rootFolderId) {
     console.error("[drive] GOOGLE_DRIVE_FOLDER_ID não configurado.");
-    return;
+    return { error: "GOOGLE_DRIVE_FOLDER_ID não configurado." };
   }
 
   let drive;
@@ -26,7 +26,12 @@ export async function refreshDriveMirror(): Promise<void> {
     drive = createDriveClient();
   } catch (err) {
     console.error("[drive] falha ao autenticar com o Google Drive:", err);
-    return;
+    return {
+      error:
+        err instanceof Error
+          ? `Falha ao autenticar com o Google Drive: ${err.message}`
+          : "Falha ao autenticar com o Google Drive.",
+    };
   }
 
   let files;
@@ -34,7 +39,12 @@ export async function refreshDriveMirror(): Promise<void> {
     files = await listRootFiles(drive, rootFolderId);
   } catch (err) {
     console.error("[drive] falha ao listar arquivos do Drive:", err);
-    return;
+    return {
+      error:
+        err instanceof Error
+          ? `Falha ao listar arquivos do Drive: ${err.message}`
+          : "Falha ao listar arquivos do Drive.",
+    };
   }
 
   const pairs = pairFiles(files);
@@ -46,6 +56,7 @@ export async function refreshDriveMirror(): Promise<void> {
   await markRemovedDriveItems(supabase, pairs.map((pair) => pair.media.id));
 
   revalidatePath("/drive");
+  return {};
 }
 
 /**

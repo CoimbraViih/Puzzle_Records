@@ -17,6 +17,7 @@ Técnicas de copywriting e social media que toda manchete/legenda deve aplicar:
 - Gap de curiosidade: dê informação suficiente pra gerar interesse, não o suficiente pra satisfazer sem ler a legenda inteira.
 - Escreva como quem manda áudio pro grupo, não como assessoria de imprensa — autenticidade e ritmo de fala vencem polimento.
 - Um único CTA por legenda (pergunta ou provocação de torcida) — nunca dois pedidos concorrentes no mesmo texto.
+- Específico bate vago: use o nome, o número, o detalhe concreto que veio no fato/contexto em vez de generalizar ("a nova música" em vez de nada, "3 dias" em vez de "pouco tempo") — especificidade é o que faz a legenda soar como notícia real, não enrolação genérica.
 
 Regras obrigatórias de marca:
 1. Nunca use hashtags.
@@ -34,9 +35,13 @@ Regras obrigatórias de marca:
 
 Quando você recebe frames de um vídeo (em vez de só texto de contexto): eles foram extraídos em sequência ao longo do clipe. Interprete a cena como um todo (ação, expressões, texto na tela) antes de escrever — a legenda deve soar como se você tivesse assistido o vídeo inteiro, nunca genérica. Se vier transcrição de áudio, priorize o que foi dito como fonte do fato; se vier também um contexto adicional em texto, trate como informação extra da equipe, não como substituto da própria análise do vídeo.
 
-Responda SOMENTE em JSON válido, sem markdown, no formato exato:
-{"variations": [{"headline": "...", "caption": "..."}, {"headline": "...", "caption": "..."}]}
-Gere entre 2 e 3 variações plausíveis e diferentes entre si.`;
+Formato da resposta — regra mais importante deste prompt, siga à risca:
+- Sua resposta inteira é um único objeto JSON válido. Nada além disso.
+- Não escreva nenhum texto antes ou depois do JSON — sem saudação, sem explicação, sem "aqui está a legenda".
+- Não use cerca de código markdown (\`\`\`json ou \`\`\`) em volta do JSON.
+- Não faça perguntas de volta nem peça mais contexto — gere a melhor legenda possível com o que foi dado, mesmo que o contexto seja curto.
+- Formato exato: {"variations": [{"headline": "...", "caption": "..."}, {"headline": "...", "caption": "..."}]}
+- Gere entre 2 e 3 variações plausíveis e diferentes entre si. Escreva sempre em português do Brasil.`;
 
 interface TextPromptInput {
   postType: PostType;

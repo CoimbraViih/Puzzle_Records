@@ -69,6 +69,26 @@ export async function mirrorFilePair(
 
   const mediaType = mediaTypeFromMimeType(pair.media.mimeType);
 
+  // Upsert "placeholder" logo de cara (sem media_storage_path ainda) —
+  // garante que o item aparece em /drive mesmo se o download/upload
+  // falhar mais abaixo, em vez de nunca criar linha nenhuma e ficar
+  // invisível sem nenhum sinal (achado real em produção: vídeo maior que
+  // o limite do bucket, ver migration 0026).
+  async function recordMirrorError(message: string): Promise<void> {
+    console.error("[drive-sync]", message, pair.media.id);
+    await supabase.from("drive_items").upsert(
+      {
+        drive_file_id: pair.media.id,
+        drive_metadata_file_id: pair.metadata?.id ?? null,
+        filename: pair.media.name,
+        media_type: mediaType,
+        removed_from_drive: false,
+        mirror_error: message,
+      },
+      { onConflict: "drive_file_id" }
+    );
+  }
+
   let context: { post_type: PostType; source_fact: string | null; track_name: string | null };
   if (pair.metadata) {
     let metadataText: string;
@@ -76,7 +96,11 @@ export async function mirrorFilePair(
       const buffer = await downloadFileContent(drive, pair.metadata.id);
       metadataText = buffer.toString("utf-8");
     } catch (err) {
-      console.error("[drive-sync] falha ao baixar metadado (tenta de novo depois):", err);
+      await recordMirrorError(
+        `Falha ao baixar metadado do Drive (tenta de novo no próximo ciclo): ${
+          err instanceof Error ? err.message : "erro desconhecido"
+        }`
+      );
       return;
     }
     try {
@@ -100,7 +124,11 @@ export async function mirrorFilePair(
   try {
     mediaBuffer = await downloadFileContent(drive, pair.media.id);
   } catch (err) {
-    console.error("[drive-sync] falha ao baixar mídia (tenta de novo depois):", err);
+    await recordMirrorError(
+      `Falha ao baixar mídia do Drive (tenta de novo no próximo ciclo): ${
+        err instanceof Error ? err.message : "erro desconhecido"
+      }`
+    );
     return;
   }
 
@@ -111,7 +139,7 @@ export async function mirrorFilePair(
     .upload(storagePath, mediaBuffer, { contentType: pair.media.mimeType });
 
   if (uploadError) {
-    console.error("[drive-sync] falha ao subir mídia pro Storage (tenta de novo depois):", uploadError);
+    await recordMirrorError(`Falha ao subir mídia pro Storage: ${uploadError.message}`);
     return;
   }
 
@@ -126,6 +154,7 @@ export async function mirrorFilePair(
       post_type: context.post_type,
       source_fact: context.source_fact,
       track_name: context.track_name,
+      mirror_error: null,
     },
     { onConflict: "drive_file_id" }
   );
