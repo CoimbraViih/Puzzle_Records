@@ -35,13 +35,20 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SITE_URL: ${{ vars.SITE_URL }}
         run: |
+          failed=0
           for path in drive-sync cutpro-pipeline generate-copy generate-art generate-video-art poll-video-render publish-scheduled; do
             echo "== $path =="
-            curl -sS -o /dev/null -w "status=%{http_code}\n" \
+            body=$(curl -sS -w "\nstatus=%{http_code}" \
               -H "Authorization: Bearer $CRON_SECRET" \
-              "$SITE_URL/api/cron/$path" \
-              || echo "::warning::falha ao chamar $path"
+              "$SITE_URL/api/cron/$path")
+            echo "$body"
+            code=$(echo "$body" | tail -n1 | sed -E 's/status=//')
+            if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+              echo "::error::$path respondeu status=$code"
+              failed=1
+            fi
           done
+          exit $failed
 
       - name: Chamar crons de 30 em 30 minutos
         if: github.event_name == 'workflow_dispatch' || steps.minute.outputs.is_half_hour == 'true'
@@ -49,10 +56,17 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SITE_URL: ${{ vars.SITE_URL }}
         run: |
+          failed=0
           for path in acervo-schedule collect-metrics; do
             echo "== $path =="
-            curl -sS -o /dev/null -w "status=%{http_code}\n" \
+            body=$(curl -sS -w "\nstatus=%{http_code}" \
               -H "Authorization: Bearer $CRON_SECRET" \
-              "$SITE_URL/api/cron/$path" \
-              || echo "::warning::falha ao chamar $path"
+              "$SITE_URL/api/cron/$path")
+            echo "$body"
+            code=$(echo "$body" | tail -n1 | sed -E 's/status=//')
+            if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+              echo "::error::$path respondeu status=$code"
+              failed=1
+            fi
           done
+          exit $failed

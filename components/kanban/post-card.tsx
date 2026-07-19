@@ -101,12 +101,15 @@ export function PostCard({
           src={post.media_signed_url}
           alt={post.headline ?? "Mídia aguardando manchete da IA"}
           className="h-32 w-full rounded-md object-cover"
+          loading="lazy"
+          decoding="async"
         />
       )}
       {post.media_signed_url && post.media_type === "video" && (
         <video
           src={post.media_signed_url}
           controls
+          preload="metadata"
           className="h-32 w-full rounded-md object-cover"
         />
       )}
@@ -117,6 +120,8 @@ export function PostCard({
           src={post.rendered_art_signed_url}
           alt="Arte gerada"
           className="mt-2 w-full rounded-md border"
+          loading="lazy"
+          decoding="async"
         />
       )}
 
