@@ -26,8 +26,14 @@ const IG_PLACEHOLDER_AVATAR =
 export function InstagramPreview({ post }: { post: PostWithRelations }) {
   const isInstagram = post.social_account?.network === "instagram";
   const previewUrl = post.rendered_art_signed_url ?? post.media_signed_url ?? null;
-  const isPreviewVideo =
-    post.content_source === "acervo" && post.media_type === "video";
+  // Antes só considerava vídeo quando content_source === "acervo" (única
+  // origem de post-vídeo quando este código foi escrito no M8) — o M17
+  // migrou "Post rápido" (vídeo com IA, content_source "painel") pro mesmo
+  // board sem atualizar esta checagem, então esses posts renderizavam
+  // <img> apontando pra um .mp4 (ícone de imagem quebrada no preview).
+  // media_type sozinho já é a fonte de verdade em todo o resto do
+  // código (post-card.tsx, drive-item-card.tsx).
+  const isPreviewVideo = post.media_type === "video";
 
   if (!isInstagram) {
     return (
