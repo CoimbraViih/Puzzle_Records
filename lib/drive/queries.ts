@@ -6,6 +6,7 @@ export interface DriveItemRow {
   filename: string;
   media_type: "image" | "video";
   media_storage_path: string | null;
+  mirror_error: string | null;
   removed_from_drive: boolean;
   post_type: "viral_geral" | "noticia_funk" | "lancamento";
   source_fact: string | null;
@@ -38,7 +39,7 @@ export async function listDriveItems(): Promise<DriveItemRow[]> {
   const { data, error } = await supabase
     .from("drive_items")
     .select(
-      "id, drive_file_id, filename, media_type, media_storage_path, removed_from_drive, post_type, source_fact, track_name, caption, caption_variations, caption_error, edit_status, cutpro_template_id, cutpro_error, edited_media_path, post_id, created_at"
+      "id, drive_file_id, filename, media_type, media_storage_path, mirror_error, removed_from_drive, post_type, source_fact, track_name, caption, caption_variations, caption_error, edit_status, cutpro_template_id, cutpro_error, edited_media_path, post_id, created_at"
     )
     .order("created_at", { ascending: false });
 
