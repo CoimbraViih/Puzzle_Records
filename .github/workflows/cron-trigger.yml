@@ -57,7 +57,7 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
         run: |
           failed=0
-          for path in acervo-schedule collect-metrics; do
+          for path in daily-schedule collect-metrics; do
             echo "== $path =="
             body=$(curl -sS -w "\nstatus=%{http_code}" \
               -H "Authorization: Bearer $CRON_SECRET" \

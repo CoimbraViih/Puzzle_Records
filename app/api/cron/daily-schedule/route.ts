@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { isSlotTaken, pickCandidateForSlot } from "@/lib/acervo/scheduler";
+import { isSlotTaken, pickCandidateForSlot } from "@/lib/scheduling/dailySlots";
 import { createServiceClient } from "@/lib/supabase/service";
 
 function isAuthorized(request: Request): boolean {
@@ -44,6 +44,14 @@ function slotDateTime(dayOffset: number, slot: string): Date {
   return base;
 }
 
+/**
+ * Renomeado de acervo-schedule (M8) pro M21: deixou de ser exclusivo de
+ * acervo, agora distribui QUALQUER post aprovado sem scheduled_at pelos
+ * horários do dia (daily_post_slots) — conteúdo curado (Drive/Post
+ * rápido) tem prioridade sobre acervo dentro do mesmo slot (ver
+ * lib/scheduling/dailySlots.ts). Ver
+ * docs/superpowers/specs/2026-07-20-horarios-estrategicos-design.md.
+ */
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -55,17 +63,17 @@ export async function GET(request: Request) {
 
   const { data: accounts, error: accountsError } = await supabase
     .from("social_accounts")
-    .select("id, acervo_daily_slots")
+    .select("id, daily_post_slots")
     .eq("network", "instagram")
-    .not("acervo_daily_slots", "eq", "{}");
+    .not("daily_post_slots", "eq", "{}");
 
   if (accountsError) {
-    console.error("[acervo-schedule] falha ao buscar contas:", accountsError.message);
+    console.error("[daily-schedule] falha ao buscar contas:", accountsError.message);
     return NextResponse.json({ error: "falha ao buscar contas" }, { status: 500 });
   }
 
   for (const account of accounts ?? []) {
-    const slots = (account.acervo_daily_slots as string[]) ?? [];
+    const slots = (account.daily_post_slots as string[]) ?? [];
     if (slots.length === 0) continue;
 
     const { data: occupied, error: occupiedError } = await supabase
@@ -76,7 +84,7 @@ export async function GET(request: Request) {
 
     if (occupiedError) {
       console.error(
-        "[acervo-schedule] falha ao buscar horários ocupados da conta:",
+        "[daily-schedule] falha ao buscar horários ocupados da conta:",
         occupiedError.message
       );
     }
@@ -96,15 +104,14 @@ export async function GET(request: Request) {
 
         const { data: candidates, error: candidatesError } = await supabase
           .from("posts")
-          .select("id, created_at")
+          .select("id, created_at, content_source")
           .eq("social_account_id", account.id)
-          .eq("content_source", "acervo")
           .eq("status", "aprovado")
           .is("scheduled_at", null);
 
         if (candidatesError) {
           console.error(
-            "[acervo-schedule] falha ao buscar candidatos do acervo:",
+            "[daily-schedule] falha ao buscar candidatos aprovados:",
             candidatesError.message
           );
         }
