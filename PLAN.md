@@ -460,6 +460,25 @@ processamento desperdiçado, não corrupção de dado.
 
 **Pronto para avançar quando**: um vídeo de Post rápido ou acervo puder ser editado com o template da casa pelo mesmo botão do Drive — validação com crédito real do Cut.Pro (upload → clipagem → render) fica para quando o Victor quiser autorizar o gasto, mesmo padrão de autorização explícita já usado no M17 para esse tipo de teste.
 
+**Validação com crédito real, autorizada pelo Victor em 20/07/2026** (ver M21 abaixo — mesmo teste cobriu os dois milestones de uma vez): clipe sintético de 30s subido na pasta real do Drive → editado com o template da casa via Cut.Pro (upload → clipagem por IA → render 1080p, ~20min de fila de render, `PUZZLE CHALLENGE IN 30 SECONDS` escolhido automaticamente pelo Cut.Pro) → legenda gerada pela IA a partir do vídeo editado (frames + tentativa de Whisper) → enviado para aprovação → aprovado com horário escolhido pelo usuário (+30s, simulando a automação do M21) → publicado de verdade no Instagram de teste: **instagram.com/reel/Da_0rblicBe/**. Nenhum bug encontrado no pipeline generalizado. Dado de teste (drive_item, arquivos no Storage e no Drive) removido depois — o post publicado fica no histórico como registro do teste (mesmo padrão do M12), então a prévia dele no Kanban aparece sem mídia (arquivo de origem já removido do Storage de propósito).
+
+---
+
+## M21 — Automação de horários estratégicos (sessão de 20/07/2026) ✅
+
+**Gatilho**: pedido do Victor pra publicar posts aprovados em horários estratégicos escolhidos por ele (ex.: 3 por dia), integrado ao Calendário. Brainstorming em sessão decidiu generalizar o mecanismo já existente do acervo (`acervo_daily_slots` + cron `acervo-schedule`, M8) em vez de criar algo novo. Spec completa em `docs/superpowers/specs/2026-07-20-horarios-estrategicos-design.md`.
+
+- [x] **Migration `0029`**: renomeia `social_accounts.acervo_daily_slots` → `daily_post_slots` — mesmo dado, significado generalizado (não é mais só acervo).
+- [x] **`lib/acervo/scheduler.ts` → `lib/scheduling/dailySlots.ts`**: `pickCandidateForSlot` deixa de filtrar por `content_source` — agora escolhe entre TODO post aprovado sem horário, com prioridade: conteúdo curado (Drive/Post rápido) sempre antes de acervo (bate com a distinção "volume × estratégico" do `docs/CLAUDE.md`), FIFO por `created_at` dentro de cada grupo.
+- [x] **Cron `acervo-schedule` → `daily-schedule`** (`app/api/cron/daily-schedule/route.ts`): remove o filtro `content_source = 'acervo'` da query de candidatos; resto da lógica (slots do dia + amanhã, trava atômica, cálculo de fuso América/São Paulo sem lib externa) não muda. `.github/workflows/cron-trigger.yml` e a branch preparada `chore/vercel-native-crons` (não mergeada) atualizadas com o novo nome da rota.
+- [x] **Mudança de comportamento (consciente, não implícita)**: `lib/posts/pendingPublish.ts` unificado — antes só acervo esperava `scheduled_at` (Drive/painel publicavam quase na hora ao aprovar); agora **todo** post aprovado sem horário manual espera o cron `daily-schedule` atribuir um slot. Quem quiser publicar num horário específico define isso na hora de aprovar.
+- [x] **Aprovação ganhou escolha de horário**: botão "Aprovar" virou um dialog (`components/kanban/approve-dialog.tsx`) com campo de data/hora opcional (horário de São Paulo, mesmo padrão de `PostFormDialog`) — em branco, entra na fila automática; preenchido, publica exatamente nesse horário.
+- [x] **Painel de horários movido pra `/calendario`** (`components/calendar/daily-slots-panel.tsx`): editar os horários do dia direto onde os posts agendados já são visualizados, removido de Admin → Contas. Action `updateAcervoSlots` → `updateDailyPostSlots`, movida pra `lib/calendar/actions.ts`.
+- [x] **Teste ponta a ponta com crédito real, autorizado pelo Victor**: fluxo completo Drive → contexto → edição com template Cut.Pro → legenda por IA → aprovação com horário escolhido pelo usuário (+30s pra validar rápido, mas o campo aceita qualquer data/hora) → publicação automática real depois do horário passar. **Post publicado de verdade**: `instagram.com/reel/Da_0rblicBe/`. Validou nesta mesma passada: a generalização do Cut.Pro (M20), a unificação de elegibilidade de publicação, e o fluxo de aprovação com horário — tudo funcionando junto, sem bugs novos encontrados. `npx tsc --noEmit`, `npm run lint`, `npm run build` limpos.
+- [x] **Achado incidental durante o teste (não relacionado a este milestone)**: um vídeo real do Victor (`WhatsApp Video...mp4`, fora do teste) foi editado com sucesso pelo Cut.Pro mas falhou ao subir o resultado renderizado pro Storage — mesmo teto de 50MB do plano Free do Supabase já documentado no M18/M19, agora confirmado também no vídeo *de saída* do Cut.Pro, não só nos originais grandes do Drive. Reforça a prioridade do M19 (compressão automática).
+
+**Pronto para avançar quando**: nada pendente do escopo original — testado com crédito real e publicação confirmada no Instagram. M19 (compressão) seguiria sendo o próximo passo natural pra evitar o mesmo teto de tamanho em vídeos editados grandes, não só nos originais.
+
 ---
 
 ## Cronograma e custos revisados (M11–M16)

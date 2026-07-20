@@ -24,8 +24,10 @@ export interface SocialAccount {
   display_name: string;
   /** Preenchido pelo M7: referência da conta no Zernio (necessária para publicar). */
   zernio_account_id: string | null;
-  /** Preenchido pelo M8: horários-alvo (HH:MM) do agendador distribuído do acervo. */
-  acervo_daily_slots: string[];
+  /** Preenchido pelo M8 (como acervo_daily_slots, renomeada no M21 quando
+   * o agendador distribuído passou a valer pra todo post aprovado, não só
+   * acervo): horários-alvo (HH:MM) do dia. */
+  daily_post_slots: string[];
   /** Preenchido pelo M9: sinalizado via falhas consecutivas de publicação (sem endpoint de status do Zernio). */
   connection_status: ConnectionStatus;
   /** Preenchido pelo M9: zerado a cada publicação bem-sucedida na conta. */

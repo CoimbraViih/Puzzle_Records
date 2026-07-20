@@ -9,7 +9,6 @@ import {
   addSocialAccountFromZernio,
   deleteSocialAccount,
   updateZernioAccountId,
-  updateAcervoSlots,
 } from "@/components/admin/contas-actions";
 import { SocialAccountForm } from "@/components/admin/social-account-form";
 
@@ -126,7 +125,6 @@ export default async function ContasPanel() {
             <th className="py-2">Handle</th>
             <th className="py-2">Nome</th>
             <th className="py-2">ID Zernio</th>
-            <th className="py-2">Horários do acervo</th>
             <th className="py-2" />
           </tr>
         </thead>
@@ -148,22 +146,6 @@ export default async function ContasPanel() {
                     defaultValue={account.zernio_account_id ?? ""}
                     placeholder="—"
                     className="w-32 text-xs"
-                  />
-                  <Button type="submit" variant="ghost" size="sm">
-                    Salvar
-                  </Button>
-                </form>
-              </td>
-              <td className="py-2">
-                <form
-                  action={updateAcervoSlots.bind(null, account.id)}
-                  className="flex items-center gap-3"
-                >
-                  <Input
-                    name="acervo_daily_slots"
-                    defaultValue={account.acervo_daily_slots.join(", ")}
-                    placeholder="09:00, 13:00, 19:00"
-                    className="w-40 text-xs"
                   />
                   <Button type="submit" variant="ghost" size="sm">
                     Salvar

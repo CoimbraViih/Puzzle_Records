@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/dashboard/page-header";
+import { DailySlotsPanel } from "@/components/calendar/daily-slots-panel";
 import { MonthCalendar } from "@/components/calendar/month-calendar";
-import { listPosts } from "@/lib/posts/queries";
+import { listPosts, listSocialAccounts } from "@/lib/posts/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,10 @@ export default async function CalendarioPage({
   const { mes } = await searchParams;
   const { year, month } = parseMonthParam(mes);
 
-  const posts = await listPosts();
+  const [posts, socialAccounts] = await Promise.all([
+    listPosts(),
+    listSocialAccounts(),
+  ]);
   // Só posts com horário definido interessam no calendário: agendados
   // (aprovado + scheduled_at) e publicados.
   const scheduled = posts.filter(
@@ -44,6 +48,7 @@ export default async function CalendarioPage({
         title="Calendário"
         description="Posts agendados e publicados por dia (horário de São Paulo)."
       />
+      <DailySlotsPanel accounts={socialAccounts} />
       <MonthCalendar year={year} month={month} posts={scheduled} />
     </div>
   );

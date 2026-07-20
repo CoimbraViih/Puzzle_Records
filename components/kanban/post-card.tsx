@@ -2,7 +2,6 @@ import { EditWithTemplateButton } from "@/components/drive/edit-with-template-bu
 import { SubmitButton } from "@/components/ui/submit-button";
 import { EDIT_STATUS_LABEL } from "@/lib/cutpro/labels";
 import {
-  approvePost,
   regenerateArt,
   retryPublish,
   selectCopyVariation,
@@ -15,6 +14,7 @@ import {
   type SocialAccount,
 } from "@/lib/types/social-account";
 
+import { ApproveDialog } from "./approve-dialog";
 import { DeletePostButton } from "./delete-post-button";
 import { InstagramPreviewDialog } from "./instagram-preview";
 import { PostFormDialog } from "./post-form-dialog";
@@ -257,13 +257,7 @@ export function PostCard({
           </form>
         )}
 
-        {canDecide(post, role) && (
-          <form action={approvePost.bind(null, post.id)}>
-            <SubmitButton size="sm" pendingLabel="Aprovando...">
-              Aprovar
-            </SubmitButton>
-          </form>
-        )}
+        {canDecide(post, role) && <ApproveDialog postId={post.id} />}
 
         {canDecide(post, role) && <RejectDialog postId={post.id} />}
 

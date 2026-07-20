@@ -56,20 +56,17 @@ export async function listPostsPendingPublish(): Promise<
       scheduled_at: string | null;
     })[]
   ).filter((post) => {
+    // M21: todo post aprovado sem scheduled_at manual espera o cron
+    // daily-schedule atribuir um horário (distribuição pelos horários do
+    // dia) — deixou de valer só pra acervo. scheduled_at nulo NUNCA mais
+    // significa "publicar agora" (comportamento antigo do Drive/painel);
+    // quem quer publicar num horário específico define scheduled_at
+    // manualmente na aprovação/edição, o que já pula direto pro filtro
+    // abaixo sem depender do daily-schedule.
     const scheduledAt = post.scheduled_at
       ? new Date(post.scheduled_at).getTime()
       : null;
-
-    if (post.content_source === "acervo") {
-      // Posts do acervo só ficam elegíveis depois que o cron acervo-schedule
-      // atribui um scheduled_at (distribuição por slot + anti-repetição).
-      // scheduled_at nulo aqui NÃO significa "publicar agora".
-      return scheduledAt !== null && scheduledAt <= now;
-    }
-
-    // Posts vindos do Drive mantêm o comportamento original: sem
-    // scheduled_at significa publicar assim que aprovado.
-    return scheduledAt === null || scheduledAt <= now;
+    return scheduledAt !== null && scheduledAt <= now;
   });
 
   return eligible.map(

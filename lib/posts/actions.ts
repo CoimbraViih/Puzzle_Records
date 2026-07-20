@@ -352,9 +352,19 @@ export async function submitForApproval(postId: string, _formData: FormData) {
   revalidatePostPages();
 }
 
-export async function approvePost(postId: string, _formData: FormData) {
+/**
+ * `scheduled_at` opcional (M21): quando o aprovador escolhe um horário
+ * (datetime-local, rotulado como horário de São Paulo — mesmo padrão de
+ * PostFormDialog), o post publica nesse horário exato. Deixando em
+ * branco, o post entra na fila do cron daily-schedule (próximo horário
+ * livre configurado em /calendario) — ver
+ * docs/superpowers/specs/2026-07-20-horarios-estrategicos-design.md.
+ */
+export async function approvePost(postId: string, formData: FormData) {
   const profile = await getCurrentProfile();
   if (!profile) return;
+
+  const scheduledAtLocal = String(formData.get("scheduled_at") ?? "").trim();
 
   const error = await updateStatus(postId, "aprovado", {
     approved_by: profile.id,
@@ -362,6 +372,7 @@ export async function approvePost(postId: string, _formData: FormData) {
     submitted_for_approval_at: null,
     sla_alert_sent_at: null,
     notification_error: null,
+    scheduled_at: scheduledAtLocal ? spDateTimeLocalToUtcIso(scheduledAtLocal) : null,
   });
   if (!error) revalidatePostPages();
 }
