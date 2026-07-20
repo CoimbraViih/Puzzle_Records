@@ -129,7 +129,9 @@ export function PostCard({
         />
       )}
 
-      {post.rendered_art_signed_url && post.content_source !== "acervo" && (
+      {post.rendered_art_signed_url &&
+        post.content_source !== "acervo" &&
+        post.media_type === "image" && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={post.rendered_art_signed_url}
