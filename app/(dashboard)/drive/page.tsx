@@ -2,15 +2,18 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { DriveItemCard } from "@/components/drive/drive-item-card";
 import { DriveRefreshButton } from "@/components/drive/drive-refresh-button";
 import { ManualPostDialog } from "@/components/drive/manual-post-dialog";
+import { RenderQueuePanel } from "@/components/cutpro/render-queue-panel";
 import { listDriveItems } from "@/lib/drive/queries";
+import { listRenderQueue } from "@/lib/cutpro/renderQueue";
 import { listSocialAccounts } from "@/lib/posts/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function DrivePage() {
-  const [items, socialAccounts] = await Promise.all([
+  const [items, socialAccounts, renderQueue] = await Promise.all([
     listDriveItems(),
     listSocialAccounts(),
+    listRenderQueue(),
   ]);
 
   return (
@@ -25,6 +28,8 @@ export default async function DrivePage() {
           </div>
         }
       />
+
+      <RenderQueuePanel items={renderQueue} />
 
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">

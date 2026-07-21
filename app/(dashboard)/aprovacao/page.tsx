@@ -2,7 +2,9 @@ import { FilterableBoard } from "@/components/kanban/filterable-board";
 import { PostFormDialog } from "@/components/kanban/post-form-dialog";
 import { QuickPostDialog } from "@/components/kanban/quick-post-dialog";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { RenderQueuePanel } from "@/components/cutpro/render-queue-panel";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
+import { listRenderQueue } from "@/lib/cutpro/renderQueue";
 import { listPosts, listSocialAccounts } from "@/lib/posts/queries";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +16,10 @@ export const maxDuration = 300;
 
 export default async function AprovacaoPage() {
   const profile = await getCurrentProfile();
-  const [posts, socialAccounts] = await Promise.all([
+  const [posts, socialAccounts, renderQueue] = await Promise.all([
     listPosts(),
     listSocialAccounts(),
+    listRenderQueue(),
   ]);
 
   return (
@@ -35,6 +38,8 @@ export default async function AprovacaoPage() {
           </div>
         }
       />
+
+      <RenderQueuePanel items={renderQueue} />
 
       {profile && (
         <FilterableBoard
