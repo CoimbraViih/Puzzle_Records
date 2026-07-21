@@ -28,6 +28,12 @@ const eslintConfig = defineConfig([
     // them from the main repo root double-scans the same files under a
     // different working directory and produces spurious parser errors.
     ".claude/**",
+    // Pastas soltas, não relacionadas ao app (mesmo motivo do exclude do
+    // tsconfig.json) — repos de referência externos que acabaram na raiz
+    // do projeto, nunca fizeram parte do código do Puzzle Records.
+    "Agent-Skills-for-Context-Engineering/**",
+    "claude-remotion-skill/**",
+    "marketingskills/**",
   ]),
 ]);
 
