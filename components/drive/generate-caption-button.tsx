@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Sparkles } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { generateDriveItemCaption } from "@/lib/drive/caption";
@@ -23,8 +23,8 @@ export function GenerateCaptionButton({ driveItemId }: { driveItemId: string }) 
           })
         }
       >
-        <Sparkles className={isPending ? "animate-pulse" : undefined} />
-        Gerar legenda
+        {isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
+        {isPending ? "Gerando legenda…" : "Gerar legenda"}
       </Button>
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
     </div>
