@@ -30,5 +30,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "render-worker"]
+  "exclude": [
+    "node_modules",
+    "render-worker",
+    "Agent-Skills-for-Context-Engineering",
+    "claude-remotion-skill",
+    "marketingskills"
+  ]
 }
