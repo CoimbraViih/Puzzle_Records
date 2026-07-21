@@ -9,9 +9,12 @@
 -- ATENÇÃO: esta migration NÃO foi aplicada nesta sessão (MCP do Supabase
 -- desconectado, sem psql/CLI configurado) — precisa ser rodada manualmente
 -- no SQL Editor do projeto Supabase de produção (dtfnxurjemdabqukgqzc)
--- ANTES do deploy do código desta branch. lib/drive/queries.ts já faz
--- select explícito de cutpro_render_progress (listDriveItems) — sem a
--- coluna, essa query falha e /drive renderiza vazio (erro tratado, sem
--- crash, mas visivelmente quebrado) até a migration ser aplicada.
+-- antes da % de progresso aparecer de verdade. Achado na revisão final de
+-- branch: lib/drive/queries.ts (listDriveItems) e lib/cutpro/renderQueue.ts
+-- usam select("*")/select explícito só de colunas já existentes — nenhuma
+-- query nova quebra por causa desta coluna estar ausente; até a migration
+-- rodar, cutpro_render_progress só vem undefined/null e o quadro de
+-- renderização mostra tempo decorrido em vez de %, sem afetar o resto da
+-- página.
 alter table public.drive_items add column cutpro_render_progress integer;
 alter table public.posts add column cutpro_render_progress integer;
