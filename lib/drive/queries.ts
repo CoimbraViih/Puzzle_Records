@@ -42,11 +42,15 @@ export interface DriveItemRow {
 /** Ordenado por criação mais recente primeiro, mesmo padrão de listPostsPendingPublish. */
 export async function listDriveItems(): Promise<DriveItemRow[]> {
   const supabase = await createClient();
+  // select("*") em vez de uma lista explícita de colunas (mesmo padrão de
+  // listPosts, lib/posts/queries.ts) — de propósito: um select explícito
+  // referenciando cutpro_render_progress quebraria essa query inteira (e
+  // /drive inteiro junto) enquanto a migration 0030 não for aplicada em
+  // produção; com "*", a coluna nova só fica undefined até lá, sem
+  // derrubar o resto da página (achado da revisão final de branch).
   const { data, error } = await supabase
     .from("drive_items")
-    .select(
-      "id, drive_file_id, filename, media_type, media_storage_path, mirror_error, removed_from_drive, post_type, source_fact, track_name, caption, caption_variations, caption_error, edit_status, cutpro_template_id, cutpro_error, cutpro_render_progress, edited_media_path, post_id, created_at, updated_at"
-    )
+    .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {

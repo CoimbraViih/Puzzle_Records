@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { isCutProBusy } from "@/lib/cutpro/labels";
+import { CUTPRO_BUSY_EDIT_STATUSES } from "@/lib/cutpro/labels";
 import type { CutProEditableRow } from "@/lib/cutpro/pipeline";
 
 /** Item da fila de renderização — uma linha de `drive_items` ou `posts` cujo
- * `edit_status` está em andamento (enviando/clipando/renderizando). Ver
+ * `edit_status` está em andamento. Ver
  * docs/superpowers/specs/2026-07-21-quadro-renderizacao-design.md, Task 3. */
 export interface RenderQueueItem {
   id: string;
@@ -15,15 +15,16 @@ export interface RenderQueueItem {
   updated_at: string;
 }
 
-const BUSY_STATUSES = ["enviando", "clipando", "renderizando"] as const;
-
 /** Busca, das duas tabelas (`drive_items` e `posts`), todas as linhas em
  * edição com template ativa. Duas queries simples combinadas em memória —
  * cada uma falha (e degrada pra lista vazia) independente da outra, mesmo
  * padrão de listDriveItems/listPosts: se `cutpro_render_progress` ainda não
  * existir em produção (migration 0030 não aplicada), a query daquela tabela
  * erra e essa fonte simplesmente não aparece na fila, em vez de derrubar a
- * página inteira. */
+ * página inteira. O filtro `.in()` usa CUTPRO_BUSY_EDIT_STATUSES (mesma
+ * fonte de isCutProBusy) em vez de uma lista própria — antes divergiam (só
+ * 3 dos 4 estados "em andamento"), deixando um item em "aplicando" invisível
+ * aqui mesmo já bloqueado/com badge em todo outro lugar. */
 export async function listRenderQueue(): Promise<RenderQueueItem[]> {
   const supabase = await createClient();
 
@@ -31,12 +32,12 @@ export async function listRenderQueue(): Promise<RenderQueueItem[]> {
     supabase
       .from("drive_items")
       .select("id, filename, edit_status, cutpro_render_progress, updated_at")
-      .in("edit_status", BUSY_STATUSES)
+      .in("edit_status", CUTPRO_BUSY_EDIT_STATUSES)
       .order("updated_at", { ascending: false }),
     supabase
       .from("posts")
       .select("id, headline, caption, edit_status, cutpro_render_progress, updated_at")
-      .in("edit_status", BUSY_STATUSES)
+      .in("edit_status", CUTPRO_BUSY_EDIT_STATUSES)
       .order("updated_at", { ascending: false }),
   ]);
 
@@ -45,7 +46,6 @@ export async function listRenderQueue(): Promise<RenderQueueItem[]> {
     console.error("[cutpro] falha ao listar drive_items em edição:", driveResult.error.message);
   } else {
     for (const row of driveResult.data ?? []) {
-      if (!isCutProBusy(row.edit_status)) continue;
       driveItems.push({
         id: row.id,
         name: row.filename,
@@ -62,7 +62,6 @@ export async function listRenderQueue(): Promise<RenderQueueItem[]> {
     console.error("[cutpro] falha ao listar posts em edição:", postsResult.error.message);
   } else {
     for (const row of postsResult.data ?? []) {
-      if (!isCutProBusy(row.edit_status)) continue;
       postItems.push({
         id: row.id,
         name: row.headline ?? row.caption ?? "Post sem título",

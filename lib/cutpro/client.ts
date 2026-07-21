@@ -285,7 +285,7 @@ export class CutProClient implements CutProProvider {
       status: RenderStatus["status"];
       progress: number;
     }>(`/renders/${renderId}`, { method: "GET" }, ["render_id", "status"]);
-    return { renderId: data.render_id, status: data.status, progress: data.progress ?? 0 };
+    return { renderId: data.render_id, status: data.status, progress: data.progress ?? null };
   }
 
   async getRenderDownloadUrl(renderId: string): Promise<{ url: string; filename: string }> {

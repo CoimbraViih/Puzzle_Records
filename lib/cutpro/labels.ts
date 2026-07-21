@@ -28,3 +28,11 @@ const CUTPRO_RESTING_STATUSES: ReadonlySet<CutProEditableRow["edit_status"]> = n
 export function isCutProBusy(editStatus: CutProEditableRow["edit_status"]): boolean {
   return !CUTPRO_RESTING_STATUSES.has(editStatus);
 }
+
+/** Lista (não Set) dos mesmos estados "em andamento" de isCutProBusy, pra
+ * quem precisa passar pra um filtro `.in("edit_status", ...)` do Supabase
+ * em vez de checar item por item — derivada de EDIT_STATUS_LABEL pra nunca
+ * ficar dessincronizada se um estado novo for adicionado ali. */
+export const CUTPRO_BUSY_EDIT_STATUSES = (
+  Object.keys(EDIT_STATUS_LABEL) as CutProEditableRow["edit_status"][]
+).filter(isCutProBusy);
