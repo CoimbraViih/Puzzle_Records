@@ -501,6 +501,23 @@ processamento desperdiçado, não corrupção de dado.
 
 ---
 
+## M22 — Quadro de renderização (progresso real de edição Cut.Pro) — sessão de 21/07/2026 ✅
+
+**Gatilho**: investigação de um post aprovado sem publicar (resolveu sozinho — ver M21) e do "achado crítico" do M20 reverificado acima. Conclusão: o problema real não era um defeito de estado, era a falta de visibilidade de progresso — o único sinal era um rótulo textual estático (`EDIT_STATUS_LABEL`), sem indicar se algo estava travado ou só lento. Executado via subagent-driven-development (3 tasks, cada uma com implementador + revisor dedicados) + revisão final de branch inteira em modelo mais capaz. Spec completa em `docs/superpowers/specs/2026-07-21-quadro-renderizacao-design.md`, plano em `docs/plans/2026-07-21-quadro-renderizacao.md`.
+
+- [x] **Migration `0030`**: `cutpro_render_progress integer` (nullable) em `drive_items` e `posts` — a API do Cut.Pro já devolve um `progress` (0-100) na consulta de render, antes descartado pelo pipeline. **Não aplicada nesta sessão** (MCP do Supabase desconectado, sem psql/CLI configurado) — pendente de rodar manualmente no SQL Editor de produção (`dtfnxurjemdabqukgqzc`) antes da % aparecer de verdade; até lá, degrada bem (ver abaixo).
+- [x] **`lib/cutpro/pipeline.ts`**: `stepRenderizando` passa a persistir o progresso real a cada ciclo do cron.
+- [x] **`RenderStatusBadge`** (`components/drive/render-status-badge.tsx`): substitui o texto estático nos dois cards (Drive e Kanban) por rótulo + barra de progresso (ou tempo decorrido, quando a % ainda não é conhecida) — nunca mostra uma barra parada em 0% como se fosse informação real.
+- [x] **Trava de segurança**: `submitForApproval` (`lib/posts/actions.ts`, update atômico com allowlist) e `sendDriveItemToApproval` (`lib/drive/sendToApproval.ts`) rejeitam enviar pra aprovação enquanto a edição com template ainda está em andamento; botões correspondentes escondidos nos dois cards com o motivo visível.
+- [x] **Painel "Fila de renderização"** (`lib/cutpro/renderQueue.ts` + `components/cutpro/render-queue-panel.tsx`): lista, das duas tabelas (`drive_items`/`posts`) combinadas, tudo que está em edição agora — visível no topo de `/drive` e `/aprovacao`; não renderiza nada quando a fila está vazia (mesmo padrão do `DailySlotsPanel`).
+- [x] **`isCutProBusy`/`CUTPRO_BUSY_EDIT_STATUSES`** (`lib/cutpro/labels.ts`): checagem centralizada por exclusão (não é um dos 3 estados de repouso) em vez de listas fixas duplicadas em 4 lugares — cobre o estado reservado `aplicando` (sem chamador hoje) de forma consistente em todo canto, achado da revisão de Task 2 e da revisão final de branch.
+- [x] **3 achados da revisão final de branch corrigidos**: (1) `listDriveItems` usava `select()` explícito incluindo a coluna nova — sem a migration aplicada, isso quebrava a query inteira e `/drive` renderizava vazio (não só a barra de progresso); trocado pro mesmo padrão `select("*")` de `listPosts`, removendo o acoplamento rígido entre merge e aplicar a migration manualmente. (2) `getRenderStatus` fazia `progress ?? 0`, gravando um 0% literal quando a API não informava progresso — exatamente o que a spec proibia; trocado pra `?? null`. (3) `renderQueue.ts` tinha sua própria lista de 3 estados "ocupado", divergente de `isCutProBusy` — unificado em `CUTPRO_BUSY_EDIT_STATUSES`.
+- [x] Pastas soltas não relacionadas ao projeto (`Agent-Skills-for-Context-Engineering/`, `claude-remotion-skill/`, `marketingskills/`, achadas sujando o escopo do `tsc`/`eslint` durante a Task 1) excluídas de `tsconfig.json`/`eslint.config.mjs` — housekeeping incidental, sem relação com a feature.
+
+**Pronto para avançar quando**: migration `0030` for aplicada manualmente em produção (único passo pendente — o código já degrada bem sem ela, só sem a % real). `npx tsc --noEmit`, `npm run lint`, `npm run build` limpos em toda a branch.
+
+---
+
 ## Cronograma e custos revisados (M11–M16)
 
 | Semana | Entrega | Custo mensal acumulado |
