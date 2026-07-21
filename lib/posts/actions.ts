@@ -341,13 +341,58 @@ async function updateStatus(
   return null;
 }
 
+/** Estados de edit_status em que o Cut.Pro NÃO está processando o vídeo —
+ * usado como allowlist no update atômico abaixo. Os 3 que ficam de fora
+ * (enviando/clipando/renderizando) são os mesmos da trava espelhada em
+ * sendDriveItemToApproval (lib/drive/sendToApproval.ts) e no gate visual de
+ * canSubmit (components/kanban/post-card.tsx). */
+const EDIT_STATUS_ALLOWED_FOR_SUBMIT = ["nao_editado", "editado", "erro"] as const;
+
+/**
+ * Chamada direto como `action` de `<form>` (components/kanban/post-card.tsx)
+ * sem useActionState — mesmo padrão simples de void já usado aqui antes
+ * desta trava (retorno descartado pela UI, só console.error em caso de
+ * falha, igual regenerateArt/selectCopyVariation/retryPublish neste
+ * arquivo). O gate real contra publicar em cima de uma edição em andamento
+ * é o filtro `.in("edit_status", ...)` no update abaixo, que é atômico —
+ * a UI (canSubmit em post-card.tsx) só esconde o botão antes disso pra dar
+ * feedback melhor, não é a garantia.
+ */
 export async function submitForApproval(postId: string, _formData: FormData) {
-  const error = await updateStatus(postId, "pendente_aprovacao", {
-    submitted_for_approval_at: new Date().toISOString(),
-    sla_alert_sent_at: null,
-    notification_error: null,
-  });
-  if (error) return;
+  // Trava de segurança (quadro de renderização, M20+): nunca deixa enviar
+  // pra aprovação enquanto a edição com template ainda está rolando —
+  // mesmo se o botão na UI já estiver escondido nesse estado (canSubmit),
+  // esta é a garantia real contra corrida (clique disparado bem antes do
+  // pipeline mudar edit_status). Update atômico: só afeta a linha se
+  // edit_status NÃO estiver em um dos 3 estados transitórios.
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("posts")
+    .update({
+      status: "pendente_aprovacao",
+      submitted_for_approval_at: new Date().toISOString(),
+      sla_alert_sent_at: null,
+      notification_error: null,
+    })
+    .eq("id", postId)
+    .in("edit_status", EDIT_STATUS_ALLOWED_FOR_SUBMIT)
+    .select("id");
+
+  if (error || !data || data.length === 0) {
+    // Não dá pra distinguir "bloqueado pelo Cut.Pro" de "RLS/post inválido"
+    // sem outra consulta — mas o gate visual (canSubmit) já cobre o caso
+    // normal, então o caso mais provável de cair aqui é mesmo a corrida
+    // contra o Cut.Pro. Mensagem "Aguarde a edição com template terminar
+    // antes de enviar para aprovação." pedida no design do quadro de
+    // renderização — registrada aqui via log porque esta action não tem
+    // canal de erro visível na UI (ver comentário acima da função).
+    console.error(
+      "Falha ao enviar post para aprovação — aguarde a edição com template terminar (edit_status em edição), ou RLS bloqueado/erro do Supabase:",
+      postId,
+      error
+    );
+    return;
+  }
 
   revalidatePostPages();
 }

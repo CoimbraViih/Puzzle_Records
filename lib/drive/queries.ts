@@ -30,6 +30,9 @@ export interface DriveItemRow {
   edited_media_path: string | null;
   post_id: string | null;
   created_at: string;
+  /** Usado por RenderStatusBadge (components/drive/render-status-badge.tsx)
+   * pra calcular o tempo decorrido desde a última mudança de edit_status. */
+  updated_at: string;
   /** URL assinada (1h) do media_storage_path — null se ainda não baixado. */
   media_signed_url: string | null;
   /** URL assinada (1h) do edited_media_path — null se o item não foi editado no Cut.Pro. */
@@ -42,7 +45,7 @@ export async function listDriveItems(): Promise<DriveItemRow[]> {
   const { data, error } = await supabase
     .from("drive_items")
     .select(
-      "id, drive_file_id, filename, media_type, media_storage_path, mirror_error, removed_from_drive, post_type, source_fact, track_name, caption, caption_variations, caption_error, edit_status, cutpro_template_id, cutpro_error, cutpro_render_progress, edited_media_path, post_id, created_at"
+      "id, drive_file_id, filename, media_type, media_storage_path, mirror_error, removed_from_drive, post_type, source_fact, track_name, caption, caption_variations, caption_error, edit_status, cutpro_template_id, cutpro_error, cutpro_render_progress, edited_media_path, post_id, created_at, updated_at"
     )
     .order("created_at", { ascending: false });
 
