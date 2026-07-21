@@ -24,6 +24,9 @@ export interface DriveItemRow {
     | "erro";
   cutpro_template_id: string | null;
   cutpro_error: string | null;
+  /** Progresso real (0-100) do render Cut.Pro (migration 0030) — null antes
+   * da migration ser aplicada em produção ou fora do estado "renderizando". */
+  cutpro_render_progress: number | null;
   edited_media_path: string | null;
   post_id: string | null;
   created_at: string;
@@ -39,7 +42,7 @@ export async function listDriveItems(): Promise<DriveItemRow[]> {
   const { data, error } = await supabase
     .from("drive_items")
     .select(
-      "id, drive_file_id, filename, media_type, media_storage_path, mirror_error, removed_from_drive, post_type, source_fact, track_name, caption, caption_variations, caption_error, edit_status, cutpro_template_id, cutpro_error, edited_media_path, post_id, created_at"
+      "id, drive_file_id, filename, media_type, media_storage_path, mirror_error, removed_from_drive, post_type, source_fact, track_name, caption, caption_variations, caption_error, edit_status, cutpro_template_id, cutpro_error, cutpro_render_progress, edited_media_path, post_id, created_at"
     )
     .order("created_at", { ascending: false });
 
