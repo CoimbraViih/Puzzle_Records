@@ -203,7 +203,13 @@ export function PostCard({
         >
           Ver post publicado
           {post.published_at &&
-            ` — ${new Date(post.published_at).toLocaleString("pt-BR")}`}
+            // PostCard é Server Component (sem "use client") — sem fixar
+            // timeZone, toLocaleString usa o fuso do runtime do servidor
+            // (Vercel = UTC), mostrando a hora errada pro time no Brasil
+            // (mesmo padrão já corrigido em notification-bell.tsx).
+            ` — ${new Date(post.published_at).toLocaleString("pt-BR", {
+              timeZone: "America/Sao_Paulo",
+            })}`}
         </a>
       )}
 

@@ -54,7 +54,9 @@ export function TestesPanel({ initialRuns }: { initialRuns: QaTestRun[] }) {
           <div className="flex items-center justify-between gap-3">
             <span className="font-medium">{run.step}</span>
             <span className="text-xs text-muted-foreground">
-              {new Date(run.created_at).toLocaleTimeString("pt-BR")}
+              {new Date(run.created_at).toLocaleTimeString("pt-BR", {
+                timeZone: "America/Sao_Paulo",
+              })}
             </span>
           </div>
           <p className="text-xs text-muted-foreground">{run.target}</p>
