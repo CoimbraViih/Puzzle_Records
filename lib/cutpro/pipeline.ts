@@ -31,6 +31,10 @@ export interface CutProEditableRow {
   cutpro_submission_id: string | null;
   cutpro_clip_id: string | null;
   cutpro_render_id: string | null;
+  /** Progresso real (0-100) devolvido por getRenderStatus enquanto renderiza
+   * (migration 0030) — null antes da migration ser aplicada em produção ou
+   * antes do primeiro ciclo de polling gravar um valor. */
+  cutpro_render_progress: number | null;
 }
 
 function extensionFromPath(path: string): string {
@@ -319,7 +323,17 @@ async function stepRenderizando(
     return;
   }
   if (status.status !== "completed") {
-    return; // ainda renderizando — tenta de novo no próximo ciclo.
+    // Ainda renderizando — grava o progresso real devolvido pela API (M20+
+    // quadro de renderização) e tenta de novo no próximo ciclo. Só um
+    // console.error aqui porque isso nunca deve bloquear o pipeline: o
+    // progresso é cosmético (visibilidade), não estado da máquina.
+    const { error } = await supabase
+      .from(table)
+      .update({ cutpro_render_progress: status.progress })
+      .eq("id", item.id)
+      .eq("edit_status", "renderizando");
+    if (error) console.error("[cutpro-pipeline] falha ao gravar cutpro_render_progress:", error);
+    return;
   }
 
   const { url } = await cutpro.getRenderDownloadUrl(item.cutpro_render_id);

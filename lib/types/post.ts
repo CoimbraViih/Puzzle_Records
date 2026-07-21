@@ -90,6 +90,9 @@ export interface Post {
   cutpro_template_id: string | null;
   cutpro_render_id: string | null;
   cutpro_error: string | null;
+  /** Progresso real (0-100) do render Cut.Pro (migration 0030) — null antes
+   * da migration ser aplicada em produção ou fora do estado "renderizando". */
+  cutpro_render_progress: number | null;
   edited_media_path: string | null;
   created_at: string;
   updated_at: string;

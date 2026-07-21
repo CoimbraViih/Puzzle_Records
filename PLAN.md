@@ -481,6 +481,43 @@ processamento desperdiçado, não corrupção de dado.
 
 ---
 
+## M20 — Teste ponta a ponta do fluxo Drive→Instagram (sessão de 20/07/2026) — bug real: pipeline Cut.Pro preso em "Renderizando" sem erro
+
+**Contexto**: teste guiado do tutorial operacional completo, executado ao vivo contra produção (via navegador, sessão Cowork), com 4 vídeos reais do WhatsApp na pasta do Drive.
+
+**Validado com sucesso**:
+- [x] Fase 1 (sincronização): os 4 vídeos apareceram em `/drive` automaticamente.
+- [x] Fase 2 (contexto + legenda): "Criar contexto" salvou; "Gerar legenda" gerou e liberou "Enviar para aprovação". **Ressalva de qualidade**: legenda sem sentido e a geração multimodal direta falhou 2× (erro visível, correto) — modelo gratuito do OpenRouter em produção; a chave OpenAI real (GPT-4o) continua pendente (M11).
+- [x] Fase 3 parcial: pipeline avançou `Enviando → Clipando → Renderizando` com créditos reais (343→341); na plataforma da Cut.Pro o vídeo tem **2 clipes e 2 edições — template da casa aplicado na clipagem confirmado**.
+- [x] Painel de integrações: Google Drive "Conectado — autenticado como viihcoimbra7x@gmail.com" e Cut.Pro "343 créditos" — validações do M18 funcionando.
+
+**Achado operacional crítico (confirma e agrava o M18)**: o cron do GitHub Actions roda verde (CRON_SECRET ok), mas o agendador executa a cada **~3 horas** (02:51→05:29→08:22), não a cada 5 min — throttling conhecido de schedules frequentes em repo gratuito. O teste só andou com disparos manuais do workflow (`Run workflow`, 5×). **Automação de 5 min de verdade = crons nativos da Vercel = upgrade Pro** (branch `chore/vercel-native-crons` pronta).
+
+**Bug real encontrado (aberto, para a próxima sessão de desenvolvimento)**:
+- [ ] Item ficou preso em `edit_status = "renderizando"` por 30+ min e 4+ ciclos de cron **sem nenhum `cutpro_error` visível**, enquanto a plataforma da Cut.Pro mostra **Processando: 0 e nenhum render criado hoje** (renders antigos de 17–19/07 aparecem normalmente, então renders via API são visíveis lá). Hipóteses a investigar no código (`lib/cutpro/pipeline.ts`, passo clipando→renderizando e o poll de render): (a) transição gravou o estado antes de submeter o render e a submissão falhou sem gravar erro; (b) `renderClip` retornou 409/`from_cache`/resposta inesperada tratada como sucesso sem `render_id` válido; (c) poll trata render inexistente (404) como "ainda processando" em vez de erro — qualquer um dos três viola o princípio nunca-silencioso. Reproduzível: item `WhatsApp Video 2026-07-20 at 07.31.00.mp4` está neste estado em produção agora.
+- [ ] Fases 4–6 do tutorial (enviar para aprovação com vídeo editado → aprovar → publicar) bloqueadas por esse bug — retomar o teste depois do fix.
+
+**Reverificado em 21/07/2026**: o item citado (`WhatsApp Video 2026-07-20 at 07.31.00.mp4`) já não está preso — resolveu sozinho (`edit_status = "editado"`). Enfraquece a hipótese de bug no pipeline: mais consistente com o próprio throttling do cron descrito acima — o Cut.Pro precisa de várias transições (enviando→clipando→renderizando→editado) e cada uma só avança num ciclo do cron; com ciclos de 1-3h em vez de 5min, um vídeo que levaria ~20min de ponta a ponta (tempo real observado em teste controlado) pode "parecer preso" por horas sem ser. Não fechado como não-bug — só rebaixado de "achado crítico" pra "hipótese enfraquecida, sem repro atual". Vira o gatilho do M22 abaixo: o problema real é a falta de visibilidade de progresso, não necessariamente um defeito de estado.
+
+---
+
+## M22 — Quadro de renderização (progresso real de edição Cut.Pro) — sessão de 21/07/2026 ✅
+
+**Gatilho**: investigação de um post aprovado sem publicar (resolveu sozinho — ver M21) e do "achado crítico" do M20 reverificado acima. Conclusão: o problema real não era um defeito de estado, era a falta de visibilidade de progresso — o único sinal era um rótulo textual estático (`EDIT_STATUS_LABEL`), sem indicar se algo estava travado ou só lento. Executado via subagent-driven-development (3 tasks, cada uma com implementador + revisor dedicados) + revisão final de branch inteira em modelo mais capaz. Spec completa em `docs/superpowers/specs/2026-07-21-quadro-renderizacao-design.md`, plano em `docs/plans/2026-07-21-quadro-renderizacao.md`.
+
+- [x] **Migration `0030`**: `cutpro_render_progress integer` (nullable) em `drive_items` e `posts` — a API do Cut.Pro já devolve um `progress` (0-100) na consulta de render, antes descartado pelo pipeline. **Não aplicada nesta sessão** (MCP do Supabase desconectado, sem psql/CLI configurado) — pendente de rodar manualmente no SQL Editor de produção (`dtfnxurjemdabqukgqzc`) antes da % aparecer de verdade; até lá, degrada bem (ver abaixo).
+- [x] **`lib/cutpro/pipeline.ts`**: `stepRenderizando` passa a persistir o progresso real a cada ciclo do cron.
+- [x] **`RenderStatusBadge`** (`components/drive/render-status-badge.tsx`): substitui o texto estático nos dois cards (Drive e Kanban) por rótulo + barra de progresso (ou tempo decorrido, quando a % ainda não é conhecida) — nunca mostra uma barra parada em 0% como se fosse informação real.
+- [x] **Trava de segurança**: `submitForApproval` (`lib/posts/actions.ts`, update atômico com allowlist) e `sendDriveItemToApproval` (`lib/drive/sendToApproval.ts`) rejeitam enviar pra aprovação enquanto a edição com template ainda está em andamento; botões correspondentes escondidos nos dois cards com o motivo visível.
+- [x] **Painel "Fila de renderização"** (`lib/cutpro/renderQueue.ts` + `components/cutpro/render-queue-panel.tsx`): lista, das duas tabelas (`drive_items`/`posts`) combinadas, tudo que está em edição agora — visível no topo de `/drive` e `/aprovacao`; não renderiza nada quando a fila está vazia (mesmo padrão do `DailySlotsPanel`).
+- [x] **`isCutProBusy`/`CUTPRO_BUSY_EDIT_STATUSES`** (`lib/cutpro/labels.ts`): checagem centralizada por exclusão (não é um dos 3 estados de repouso) em vez de listas fixas duplicadas em 4 lugares — cobre o estado reservado `aplicando` (sem chamador hoje) de forma consistente em todo canto, achado da revisão de Task 2 e da revisão final de branch.
+- [x] **3 achados da revisão final de branch corrigidos**: (1) `listDriveItems` usava `select()` explícito incluindo a coluna nova — sem a migration aplicada, isso quebrava a query inteira e `/drive` renderizava vazio (não só a barra de progresso); trocado pro mesmo padrão `select("*")` de `listPosts`, removendo o acoplamento rígido entre merge e aplicar a migration manualmente. (2) `getRenderStatus` fazia `progress ?? 0`, gravando um 0% literal quando a API não informava progresso — exatamente o que a spec proibia; trocado pra `?? null`. (3) `renderQueue.ts` tinha sua própria lista de 3 estados "ocupado", divergente de `isCutProBusy` — unificado em `CUTPRO_BUSY_EDIT_STATUSES`.
+- [x] Pastas soltas não relacionadas ao projeto (`Agent-Skills-for-Context-Engineering/`, `claude-remotion-skill/`, `marketingskills/`, achadas sujando o escopo do `tsc`/`eslint` durante a Task 1) excluídas de `tsconfig.json`/`eslint.config.mjs` — housekeeping incidental, sem relação com a feature.
+
+**Pronto para avançar quando**: migration `0030` for aplicada manualmente em produção (único passo pendente — o código já degrada bem sem ela, só sem a % real). `npx tsc --noEmit`, `npm run lint`, `npm run build` limpos em toda a branch.
+
+---
+
 ## Cronograma e custos revisados (M11–M16)
 
 | Semana | Entrega | Custo mensal acumulado |

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
+import { isCutProBusy } from "@/lib/cutpro/labels";
 import { resolveSocialAccount } from "@/lib/drive/resolveSocialAccount";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,7 +22,9 @@ export async function sendDriveItemToApproval(
 
   const { data: item, error: fetchError } = await supabase
     .from("drive_items")
-    .select("id, media_type, media_storage_path, edited_media_path, caption, post_type, post_id")
+    .select(
+      "id, media_type, media_storage_path, edited_media_path, caption, post_type, post_id, edit_status"
+    )
     .eq("id", driveItemId)
     .maybeSingle();
 
@@ -33,6 +36,12 @@ export async function sendDriveItemToApproval(
   }
   if (!item.caption) {
     return { error: "Gere ou escreva uma legenda antes de enviar." };
+  }
+  // Trava de segurança (quadro de renderização, M20+) — mesma regra de
+  // submitForApproval (lib/posts/actions.ts) espelhada aqui pro drive_item:
+  // nunca cria o post enquanto a edição com template ainda está rolando.
+  if (isCutProBusy(item.edit_status)) {
+    return { error: "Aguarde a edição com template terminar antes de enviar para aprovação." };
   }
   const mediaPath = item.edited_media_path ?? item.media_storage_path;
   if (!mediaPath) {

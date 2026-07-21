@@ -83,7 +83,10 @@ export interface RenderSubmission {
 export interface RenderStatus {
   renderId: string;
   status: RenderJobStatus;
-  progress: number;
+  /** null quando a API não informa progresso nessa consulta — nunca vira 0
+   * por default (0% real e "sem info" são estados visualmente diferentes
+   * pro quadro de renderização, ver render-status-badge.tsx). */
+  progress: number | null;
 }
 
 export interface CutProBalance {

@@ -12,3 +12,27 @@ export const EDIT_STATUS_LABEL: Record<CutProEditableRow["edit_status"], string>
   editado: "Editado",
   erro: "Erro na edição",
 };
+
+/** Estados de repouso da máquina — qualquer coisa fora desses 3 conta como
+ * "edição em andamento" pra qualquer trava de segurança ou indicador de
+ * progresso (quadro de renderização, M20+). Checagem por exclusão em vez de
+ * uma lista fixa dos estados "em andamento": "aplicando" é reservado, sem
+ * chamador hoje (lib/cutpro/pipeline.ts), mas se ganhar um algum dia essa
+ * checagem já cobre sem precisar lembrar de atualizar em cada lugar que usa. */
+const CUTPRO_RESTING_STATUSES: ReadonlySet<CutProEditableRow["edit_status"]> = new Set([
+  "nao_editado",
+  "editado",
+  "erro",
+]);
+
+export function isCutProBusy(editStatus: CutProEditableRow["edit_status"]): boolean {
+  return !CUTPRO_RESTING_STATUSES.has(editStatus);
+}
+
+/** Lista (não Set) dos mesmos estados "em andamento" de isCutProBusy, pra
+ * quem precisa passar pra um filtro `.in("edit_status", ...)` do Supabase
+ * em vez de checar item por item — derivada de EDIT_STATUS_LABEL pra nunca
+ * ficar dessincronizada se um estado novo for adicionado ali. */
+export const CUTPRO_BUSY_EDIT_STATUSES = (
+  Object.keys(EDIT_STATUS_LABEL) as CutProEditableRow["edit_status"][]
+).filter(isCutProBusy);

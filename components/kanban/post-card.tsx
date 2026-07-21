@@ -1,6 +1,7 @@
 import { EditWithTemplateButton } from "@/components/drive/edit-with-template-button";
+import { RenderStatusBadge } from "@/components/drive/render-status-badge";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { EDIT_STATUS_LABEL } from "@/lib/cutpro/labels";
+import { EDIT_STATUS_LABEL, isCutProBusy } from "@/lib/cutpro/labels";
 import {
   regenerateArt,
   retryPublish,
@@ -44,7 +45,11 @@ function canDelete(post: PostWithRelations, role: Role, userId: string) {
   );
 }
 
-function canSubmit(post: PostWithRelations, role: Role, userId: string) {
+/** Base de elegibilidade compartilhada por canSubmit/isSubmitBlockedByCutPro
+ * — as duas só diferem em como tratam o estado de edição do Cut.Pro (uma
+ * exige repouso, a outra existe só pra explicar o bloqueio quando não está
+ * em repouso), então checam a mesma dona/status uma vez só. */
+function isEligibleForSubmit(post: PostWithRelations, role: Role, userId: string) {
   const ownedByAuthor =
     role === "equipe_conteudo" &&
     (post.created_by === userId || post.created_by === null);
@@ -53,6 +58,17 @@ function canSubmit(post: PostWithRelations, role: Role, userId: string) {
     post.status === "rascunho" ||
     post.status === "rejeitado";
   return (ownedByAuthor || role === "admin") && eligibleStatus;
+}
+
+function canSubmit(post: PostWithRelations, role: Role, userId: string) {
+  return isEligibleForSubmit(post, role, userId) && !isCutProBusy(post.edit_status);
+}
+
+/** Só pra mostrar o motivo de "Enviar para aprovação" estar escondido —
+ * mesma elegibilidade de canSubmit, mas sem a checagem de edit_status
+ * (que é justamente o que bloqueia). */
+function isSubmitBlockedByCutPro(post: PostWithRelations, role: Role, userId: string) {
+  return isEligibleForSubmit(post, role, userId) && isCutProBusy(post.edit_status);
 }
 
 function canDecide(post: PostWithRelations, role: Role) {
@@ -222,9 +238,12 @@ export function PostCard({
       )}
 
       {post.media_type === "video" && post.edit_status !== "nao_editado" && (
-        <p className="text-xs text-muted-foreground">
-          Template: {EDIT_STATUS_LABEL[post.edit_status]}
-        </p>
+        <RenderStatusBadge
+          editStatus={post.edit_status}
+          renderProgress={post.cutpro_render_progress}
+          updatedAt={post.updated_at}
+          label={`Template: ${EDIT_STATUS_LABEL[post.edit_status]}`}
+        />
       )}
       {post.cutpro_error && (
         <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
@@ -255,6 +274,12 @@ export function PostCard({
                 : "Enviar para aprovação"}
             </SubmitButton>
           </form>
+        )}
+
+        {isSubmitBlockedByCutPro(post, role, currentUserId) && (
+          <p className="text-xs text-muted-foreground">
+            Aguarde a edição com template terminar antes de enviar para aprovação.
+          </p>
         )}
 
         {canDecide(post, role) && <ApproveDialog postId={post.id} />}

@@ -24,9 +24,15 @@ export interface DriveItemRow {
     | "erro";
   cutpro_template_id: string | null;
   cutpro_error: string | null;
+  /** Progresso real (0-100) do render Cut.Pro (migration 0030) — null antes
+   * da migration ser aplicada em produção ou fora do estado "renderizando". */
+  cutpro_render_progress: number | null;
   edited_media_path: string | null;
   post_id: string | null;
   created_at: string;
+  /** Usado por RenderStatusBadge (components/drive/render-status-badge.tsx)
+   * pra calcular o tempo decorrido desde a última mudança de edit_status. */
+  updated_at: string;
   /** URL assinada (1h) do media_storage_path — null se ainda não baixado. */
   media_signed_url: string | null;
   /** URL assinada (1h) do edited_media_path — null se o item não foi editado no Cut.Pro. */
@@ -36,11 +42,15 @@ export interface DriveItemRow {
 /** Ordenado por criação mais recente primeiro, mesmo padrão de listPostsPendingPublish. */
 export async function listDriveItems(): Promise<DriveItemRow[]> {
   const supabase = await createClient();
+  // select("*") em vez de uma lista explícita de colunas (mesmo padrão de
+  // listPosts, lib/posts/queries.ts) — de propósito: um select explícito
+  // referenciando cutpro_render_progress quebraria essa query inteira (e
+  // /drive inteiro junto) enquanto a migration 0030 não for aplicada em
+  // produção; com "*", a coluna nova só fica undefined até lá, sem
+  // derrubar o resto da página (achado da revisão final de branch).
   const { data, error } = await supabase
     .from("drive_items")
-    .select(
-      "id, drive_file_id, filename, media_type, media_storage_path, mirror_error, removed_from_drive, post_type, source_fact, track_name, caption, caption_variations, caption_error, edit_status, cutpro_template_id, cutpro_error, edited_media_path, post_id, created_at"
-    )
+    .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {
