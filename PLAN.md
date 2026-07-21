@@ -481,6 +481,26 @@ processamento desperdiçado, não corrupção de dado.
 
 ---
 
+## M20 — Teste ponta a ponta do fluxo Drive→Instagram (sessão de 20/07/2026) — bug real: pipeline Cut.Pro preso em "Renderizando" sem erro
+
+**Contexto**: teste guiado do tutorial operacional completo, executado ao vivo contra produção (via navegador, sessão Cowork), com 4 vídeos reais do WhatsApp na pasta do Drive.
+
+**Validado com sucesso**:
+- [x] Fase 1 (sincronização): os 4 vídeos apareceram em `/drive` automaticamente.
+- [x] Fase 2 (contexto + legenda): "Criar contexto" salvou; "Gerar legenda" gerou e liberou "Enviar para aprovação". **Ressalva de qualidade**: legenda sem sentido e a geração multimodal direta falhou 2× (erro visível, correto) — modelo gratuito do OpenRouter em produção; a chave OpenAI real (GPT-4o) continua pendente (M11).
+- [x] Fase 3 parcial: pipeline avançou `Enviando → Clipando → Renderizando` com créditos reais (343→341); na plataforma da Cut.Pro o vídeo tem **2 clipes e 2 edições — template da casa aplicado na clipagem confirmado**.
+- [x] Painel de integrações: Google Drive "Conectado — autenticado como viihcoimbra7x@gmail.com" e Cut.Pro "343 créditos" — validações do M18 funcionando.
+
+**Achado operacional crítico (confirma e agrava o M18)**: o cron do GitHub Actions roda verde (CRON_SECRET ok), mas o agendador executa a cada **~3 horas** (02:51→05:29→08:22), não a cada 5 min — throttling conhecido de schedules frequentes em repo gratuito. O teste só andou com disparos manuais do workflow (`Run workflow`, 5×). **Automação de 5 min de verdade = crons nativos da Vercel = upgrade Pro** (branch `chore/vercel-native-crons` pronta).
+
+**Bug real encontrado (aberto, para a próxima sessão de desenvolvimento)**:
+- [ ] Item ficou preso em `edit_status = "renderizando"` por 30+ min e 4+ ciclos de cron **sem nenhum `cutpro_error` visível**, enquanto a plataforma da Cut.Pro mostra **Processando: 0 e nenhum render criado hoje** (renders antigos de 17–19/07 aparecem normalmente, então renders via API são visíveis lá). Hipóteses a investigar no código (`lib/cutpro/pipeline.ts`, passo clipando→renderizando e o poll de render): (a) transição gravou o estado antes de submeter o render e a submissão falhou sem gravar erro; (b) `renderClip` retornou 409/`from_cache`/resposta inesperada tratada como sucesso sem `render_id` válido; (c) poll trata render inexistente (404) como "ainda processando" em vez de erro — qualquer um dos três viola o princípio nunca-silencioso. Reproduzível: item `WhatsApp Video 2026-07-20 at 07.31.00.mp4` está neste estado em produção agora.
+- [ ] Fases 4–6 do tutorial (enviar para aprovação com vídeo editado → aprovar → publicar) bloqueadas por esse bug — retomar o teste depois do fix.
+
+**Reverificado em 21/07/2026**: o item citado (`WhatsApp Video 2026-07-20 at 07.31.00.mp4`) já não está preso — resolveu sozinho (`edit_status = "editado"`). Enfraquece a hipótese de bug no pipeline: mais consistente com o próprio throttling do cron descrito acima — o Cut.Pro precisa de várias transições (enviando→clipando→renderizando→editado) e cada uma só avança num ciclo do cron; com ciclos de 1-3h em vez de 5min, um vídeo que levaria ~20min de ponta a ponta (tempo real observado em teste controlado) pode "parecer preso" por horas sem ser. Não fechado como não-bug — só rebaixado de "achado crítico" pra "hipótese enfraquecida, sem repro atual". Vira o gatilho do M22 abaixo: o problema real é a falta de visibilidade de progresso, não necessariamente um defeito de estado.
+
+---
+
 ## Cronograma e custos revisados (M11–M16)
 
 | Semana | Entrega | Custo mensal acumulado |
