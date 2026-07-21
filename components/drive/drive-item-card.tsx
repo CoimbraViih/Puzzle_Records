@@ -5,16 +5,8 @@ import { GenerateCaptionButton } from "@/components/drive/generate-caption-butto
 import { RenderStatusBadge } from "@/components/drive/render-status-badge";
 import { SendToApprovalButton } from "@/components/drive/send-to-approval-button";
 import { SetContextButton } from "@/components/drive/set-context-button";
+import { isCutProBusy } from "@/lib/cutpro/labels";
 import type { DriveItemRow } from "@/lib/drive/queries";
-
-/** Mesmos 3 estados transitórios da trava de segurança em
- * sendDriveItemToApproval (lib/drive/sendToApproval.ts) — usado aqui pra
- * esconder o botão "Enviar para aprovação" enquanto a edição está rolando. */
-const CUTPRO_BUSY_STATUSES: ReadonlySet<DriveItemRow["edit_status"]> = new Set([
-  "enviando",
-  "clipando",
-  "renderizando",
-]);
 
 export function DriveItemCard({ item }: { item: DriveItemRow }) {
   const previewUrl = item.edited_media_signed_url ?? item.media_signed_url;
@@ -87,10 +79,10 @@ export function DriveItemCard({ item }: { item: DriveItemRow }) {
             <EditWithTemplateButton kind="drive" driveItemId={item.id} />
           ) : null}
           {item.cutpro_error ? <p className="text-xs text-destructive">{item.cutpro_error}</p> : null}
-          {item.caption && !CUTPRO_BUSY_STATUSES.has(item.edit_status) ? (
+          {item.caption && !isCutProBusy(item.edit_status) ? (
             <SendToApprovalButton driveItemId={item.id} />
           ) : null}
-          {item.caption && CUTPRO_BUSY_STATUSES.has(item.edit_status) ? (
+          {item.caption && isCutProBusy(item.edit_status) ? (
             <p className="text-xs text-muted-foreground">
               Aguarde a edição com template terminar antes de enviar para aprovação.
             </p>

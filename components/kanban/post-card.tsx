@@ -1,7 +1,7 @@
 import { EditWithTemplateButton } from "@/components/drive/edit-with-template-button";
 import { RenderStatusBadge } from "@/components/drive/render-status-badge";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { EDIT_STATUS_LABEL } from "@/lib/cutpro/labels";
+import { EDIT_STATUS_LABEL, isCutProBusy } from "@/lib/cutpro/labels";
 import {
   regenerateArt,
   retryPublish,
@@ -45,18 +45,11 @@ function canDelete(post: PostWithRelations, role: Role, userId: string) {
   );
 }
 
-/** Mesmos 3 estados transitórios da trava de segurança em submitForApproval
- * (lib/posts/actions.ts) — enquanto o Cut.Pro está processando o vídeo, o
- * post não pode ser enviado pra aprovação (mesma regra do lado do servidor,
- * espelhada aqui pra esconder o botão em vez de deixar o usuário descobrir
- * o erro só depois de clicar). */
-const CUTPRO_BUSY_STATUSES: ReadonlySet<PostWithRelations["edit_status"]> = new Set([
-  "enviando",
-  "clipando",
-  "renderizando",
-]);
-
-function canSubmit(post: PostWithRelations, role: Role, userId: string) {
+/** Base de elegibilidade compartilhada por canSubmit/isSubmitBlockedByCutPro
+ * — as duas só diferem em como tratam o estado de edição do Cut.Pro (uma
+ * exige repouso, a outra existe só pra explicar o bloqueio quando não está
+ * em repouso), então checam a mesma dona/status uma vez só. */
+function isEligibleForSubmit(post: PostWithRelations, role: Role, userId: string) {
   const ownedByAuthor =
     role === "equipe_conteudo" &&
     (post.created_by === userId || post.created_by === null);
@@ -64,29 +57,18 @@ function canSubmit(post: PostWithRelations, role: Role, userId: string) {
     post.status === "pendente" ||
     post.status === "rascunho" ||
     post.status === "rejeitado";
-  return (
-    (ownedByAuthor || role === "admin") &&
-    eligibleStatus &&
-    !CUTPRO_BUSY_STATUSES.has(post.edit_status)
-  );
+  return (ownedByAuthor || role === "admin") && eligibleStatus;
+}
+
+function canSubmit(post: PostWithRelations, role: Role, userId: string) {
+  return isEligibleForSubmit(post, role, userId) && !isCutProBusy(post.edit_status);
 }
 
 /** Só pra mostrar o motivo de "Enviar para aprovação" estar escondido —
  * mesma elegibilidade de canSubmit, mas sem a checagem de edit_status
  * (que é justamente o que bloqueia). */
 function isSubmitBlockedByCutPro(post: PostWithRelations, role: Role, userId: string) {
-  const ownedByAuthor =
-    role === "equipe_conteudo" &&
-    (post.created_by === userId || post.created_by === null);
-  const eligibleStatus =
-    post.status === "pendente" ||
-    post.status === "rascunho" ||
-    post.status === "rejeitado";
-  return (
-    (ownedByAuthor || role === "admin") &&
-    eligibleStatus &&
-    CUTPRO_BUSY_STATUSES.has(post.edit_status)
-  );
+  return isEligibleForSubmit(post, role, userId) && isCutProBusy(post.edit_status);
 }
 
 function canDecide(post: PostWithRelations, role: Role) {

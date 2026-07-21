@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
+import { isCutProBusy } from "@/lib/cutpro/labels";
 import { resolveSocialAccount } from "@/lib/drive/resolveSocialAccount";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,11 +40,7 @@ export async function sendDriveItemToApproval(
   // Trava de segurança (quadro de renderização, M20+) — mesma regra de
   // submitForApproval (lib/posts/actions.ts) espelhada aqui pro drive_item:
   // nunca cria o post enquanto a edição com template ainda está rolando.
-  if (
-    item.edit_status === "enviando" ||
-    item.edit_status === "clipando" ||
-    item.edit_status === "renderizando"
-  ) {
+  if (isCutProBusy(item.edit_status)) {
     return { error: "Aguarde a edição com template terminar antes de enviar para aprovação." };
   }
   const mediaPath = item.edited_media_path ?? item.media_storage_path;

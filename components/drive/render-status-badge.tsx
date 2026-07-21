@@ -1,15 +1,6 @@
-import { EDIT_STATUS_LABEL } from "@/lib/cutpro/labels";
+import { EDIT_STATUS_LABEL, isCutProBusy } from "@/lib/cutpro/labels";
 
 type EditStatus = keyof typeof EDIT_STATUS_LABEL;
-
-/** Estados em que o Cut.Pro está de fato processando o item — mesmos 3
- * valores da trava de segurança em submitForApproval/sendDriveItemToApproval
- * (lib/posts/actions.ts, lib/drive/sendToApproval.ts). */
-const TRANSIENT_STATUSES: ReadonlySet<EditStatus> = new Set([
-  "enviando",
-  "clipando",
-  "renderizando",
-]);
 
 /** "há Xmin"/"há Xh"/"há Xh Ymin" a partir de `updatedAt` até agora — cálculo
  * simples no render (sem interval/polling), como pedido no brief da Task 2. */
@@ -56,7 +47,7 @@ export function RenderStatusBadge({
 }) {
   const displayLabel = label ?? EDIT_STATUS_LABEL[editStatus];
 
-  if (!TRANSIENT_STATUSES.has(editStatus)) {
+  if (!isCutProBusy(editStatus)) {
     return <p className="text-xs text-muted-foreground">{displayLabel}</p>;
   }
 
