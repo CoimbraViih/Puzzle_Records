@@ -19,6 +19,7 @@ const CONTENT_SOURCE_LABELS: Record<ContentSource, string> = {
   drive: "Drive",
   acervo: "Acervo",
   painel: "Painel",
+  n8n: "n8n",
 };
 
 const SELECT_CLASSES =

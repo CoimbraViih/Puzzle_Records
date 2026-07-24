@@ -18,7 +18,7 @@ export const POST_STATUS_LABELS: Record<PostStatus, string> = {
   publicado: "Publicado",
 };
 
-export const CONTENT_SOURCES = ["drive", "acervo", "painel"] as const;
+export const CONTENT_SOURCES = ["drive", "acervo", "painel", "n8n"] as const;
 export type ContentSource = (typeof CONTENT_SOURCES)[number];
 
 export const POST_TEMPLATES = ["A", "B"] as const;
@@ -80,6 +80,14 @@ export interface Post {
   approved_by: string | null;
   /** Preenchido pelo M8: distingue posts do Drive (M3) de upload manual de acervo. */
   content_source: ContentSource;
+  /** Preenchido só por posts vindos do n8n (content_source 'n8n') — id do
+   * arquivo no Google Drive, usado pra deduplicação e pra mover o arquivo
+   * pra "Processados" só depois de publicado (ver docs/superpowers/specs/
+   * 2026-07-24-n8n-legenda-app-mover-processados-design.md). */
+  drive_file_id: string | null;
+  /** Preenchido quando o arquivo original já foi movido pra "Processados"
+   * no Drive — null significa ainda não movido. */
+  drive_moved_at: string | null;
   /** Colunas do Cut.Pro (migration 0028) — mesma máquina de estados de
    * drive_items, pra Post rápido/Novo post e cadastro de acervo poderem
    * usar "Editar com template" sem passar por drive_items. */
