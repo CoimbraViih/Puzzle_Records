@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,6 +30,7 @@ export async function updateDailyPostSlots(
 
   if (error) {
     console.error("Falha ao atualizar daily_post_slots:", accountId, error);
+    Sentry.captureException(error);
   }
   revalidatePath("/calendario");
 }

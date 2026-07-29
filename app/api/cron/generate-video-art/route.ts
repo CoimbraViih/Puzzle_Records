@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { listPostsPendingVideoArt } from "@/lib/posts/pendingVideoArt";
 import { getDefaultVideoTemplateForCron } from "@/lib/templates/queries";
@@ -126,6 +127,7 @@ export async function GET(request: Request) {
       }
       submitted += 1;
     } catch (err) {
+      Sentry.captureException(err);
       const message =
         err instanceof VideoAnalysisError || err instanceof RenderWorkerError
           ? err.message

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import type { VideoTemplateConfig } from "@/lib/types/template";
 
@@ -82,6 +83,7 @@ export async function duplicateTemplate(id: string): Promise<{ error: string | n
     .single();
 
   if (fetchError || !original) {
+    Sentry.captureException(fetchError ?? new Error("Template original não encontrado para duplicar."));
     return { error: fetchError?.message ?? "Template original não encontrado." };
   }
 
@@ -93,6 +95,7 @@ export async function duplicateTemplate(id: string): Promise<{ error: string | n
   });
 
   if (error) {
+    Sentry.captureException(error);
     return { error: error.message };
   }
 

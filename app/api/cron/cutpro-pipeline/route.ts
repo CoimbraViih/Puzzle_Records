@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 import { advanceCutProEdit, type CutProEditableRow, type CutProTable } from "@/lib/cutpro/pipeline";
 import { checkCutProBalance } from "@/lib/cutpro/balanceMonitor";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+// Upload de vídeo pro Cut.Pro pode levar dezenas de segundos; sem isso a
+// função é derrubada no meio do upload sem gravar erro (ver docs/CLAUDE.md).
+export const maxDuration = 300;
 
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -27,8 +32,8 @@ async function fetchEligibleItems(
 ): Promise<CutProEditableRow[]> {
   const selectColumns =
     table === "drive_items"
-      ? "id, filename, media_storage_path, edit_status, cutpro_template_id, cutpro_video_id, cutpro_submission_id, cutpro_clip_id, cutpro_render_id"
-      : "id, filename:media_url, media_storage_path:media_url, edit_status, cutpro_template_id, cutpro_video_id, cutpro_submission_id, cutpro_clip_id, cutpro_render_id";
+      ? "id, filename, media_storage_path, edit_status, cutpro_template_id, cutpro_video_id, cutpro_submission_id, cutpro_clip_id, cutpro_render_id, updated_at"
+      : "id, filename:media_url, media_storage_path:media_url, edit_status, cutpro_template_id, cutpro_video_id, cutpro_submission_id, cutpro_clip_id, cutpro_render_id, updated_at";
 
   let query = supabase
     .from(table)
@@ -52,6 +57,7 @@ async function fetchEligibleItems(
 
   if (error) {
     console.error(`[cutpro-pipeline] falha ao listar itens em edição (${table}):`, error);
+    Sentry.captureException(error);
     return [];
   }
 

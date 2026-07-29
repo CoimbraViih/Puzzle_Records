@@ -1,15 +1,12 @@
-import { Button } from "@/components/ui/button";
-import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
-import { Input } from "@/components/ui/input";
 import { listSocialAccounts } from "@/lib/posts/queries";
 import { listZernioAccounts } from "@/lib/publishing";
 import { SOCIAL_NETWORK_LABELS } from "@/lib/types/social-account";
 
 import {
-  addSocialAccountFromZernio,
-  deleteSocialAccount,
-  updateZernioAccountId,
-} from "@/components/admin/contas-actions";
+  DeleteAccountForm,
+  ZernioAccountIdForm,
+  ZernioAddAccountForm,
+} from "@/components/admin/contas-forms";
 import { SocialAccountForm } from "@/components/admin/social-account-form";
 
 async function ZernioAccountPicker({ linkedZernioIds }: { linkedZernioIds: Set<string> }) {
@@ -61,38 +58,7 @@ async function ZernioAccountPicker({ linkedZernioIds }: { linkedZernioIds: Set<s
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {unlinked.map((account) => (
-          <form
-            key={account.id}
-            action={addSocialAccountFromZernio}
-            className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
-          >
-            <input type="hidden" name="network" value={account.network} />
-            <input type="hidden" name="handle" value={account.username} />
-            <input type="hidden" name="display_name" value={account.displayName} />
-            <input type="hidden" name="zernio_account_id" value={account.id} />
-            {account.profilePictureUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={account.profilePictureUrl}
-                alt={account.displayName}
-                className="size-10 shrink-0 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">
-                {SOCIAL_NETWORK_LABELS[account.network][0]}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">{account.displayName}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {SOCIAL_NETWORK_LABELS[account.network]} · @{account.username}
-                {!account.isActive && " · inativa"}
-              </p>
-            </div>
-            <Button type="submit" size="sm">
-              Adicionar
-            </Button>
-          </form>
+          <ZernioAddAccountForm key={account.id} account={account} />
         ))}
       </div>
     </div>
@@ -137,31 +103,13 @@ export default async function ContasPanel() {
               <td className="py-2 text-foreground">{account.handle}</td>
               <td className="py-2 text-foreground">{account.display_name}</td>
               <td className="py-2">
-                <form
-                  action={updateZernioAccountId.bind(null, account.id)}
-                  className="flex items-center gap-3"
-                >
-                  <Input
-                    name="zernio_account_id"
-                    defaultValue={account.zernio_account_id ?? ""}
-                    placeholder="—"
-                    className="w-32 text-xs"
-                  />
-                  <Button type="submit" variant="ghost" size="sm">
-                    Salvar
-                  </Button>
-                </form>
+                <ZernioAccountIdForm
+                  accountId={account.id}
+                  defaultValue={account.zernio_account_id ?? ""}
+                />
               </td>
               <td className="py-2 text-right">
-                <form action={deleteSocialAccount.bind(null, account.id)}>
-                  <ConfirmSubmitButton
-                    variant="ghost"
-                    size="sm"
-                    confirmMessage="Excluir esta conta social? Posts vinculados deixarão de referenciá-la."
-                  >
-                    Excluir
-                  </ConfirmSubmitButton>
-                </form>
+                <DeleteAccountForm accountId={account.id} />
               </td>
             </tr>
           ))}

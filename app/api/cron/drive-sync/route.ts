@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 import { createDriveClient } from "@/lib/drive/client";
 import { mirrorFilePair, markRemovedDriveItems } from "@/lib/drive/mirrorFile";
 import { listRootFiles } from "@/lib/drive/listPendingFiles";
 import { pairFiles } from "@/lib/drive/pairFiles";
 import { createServiceClient } from "@/lib/supabase/service";
+
+// Download de vídeo grande do Drive pode levar dezenas de segundos; sem isso
+// a função é derrubada no meio do download sem gravar erro (ver docs/CLAUDE.md).
+export const maxDuration = 300;
 
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -28,6 +33,7 @@ export async function GET(request: Request) {
     drive = createDriveClient();
   } catch (err) {
     console.error("Falha ao autenticar com o Google Drive:", err);
+    Sentry.captureException(err);
     return NextResponse.json({ error: "server_misconfigured" }, { status: 500 });
   }
 
@@ -36,6 +42,7 @@ export async function GET(request: Request) {
     files = await listRootFiles(drive, rootFolderId);
   } catch (err) {
     console.error("Falha ao listar arquivos do Drive (tenta de novo no próximo cron):", err);
+    Sentry.captureException(err);
     return NextResponse.json({ mirrored: 0 });
   }
 

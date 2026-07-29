@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 import { isSlotTaken, pickCandidateForSlot } from "@/lib/scheduling/dailySlots";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -69,6 +70,7 @@ export async function GET(request: Request) {
 
   if (accountsError) {
     console.error("[daily-schedule] falha ao buscar contas:", accountsError.message);
+    Sentry.captureException(accountsError);
     return NextResponse.json({ error: "falha ao buscar contas" }, { status: 500 });
   }
 
@@ -87,6 +89,7 @@ export async function GET(request: Request) {
         "[daily-schedule] falha ao buscar horários ocupados da conta:",
         occupiedError.message
       );
+      Sentry.captureException(occupiedError);
     }
 
     const occupiedDateTimes = (occupied ?? [])
@@ -114,6 +117,7 @@ export async function GET(request: Request) {
             "[daily-schedule] falha ao buscar candidatos aprovados:",
             candidatesError.message
           );
+          Sentry.captureException(candidatesError);
         }
 
         const chosen = pickCandidateForSlot(candidates ?? []);

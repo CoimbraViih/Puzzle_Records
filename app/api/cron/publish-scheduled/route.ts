@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import {
   getPublishingProvider,
   PublishError,
@@ -10,6 +11,11 @@ import {
 } from "@/lib/posts/pendingPublish";
 import { createServiceClient } from "@/lib/supabase/service";
 import { DISCONNECT_FAILURE_THRESHOLD } from "@/lib/analytics/constants";
+
+// Zernio faz polling de até ~30s por post (ver docs/CLAUDE.md); sem isso a
+// função é derrubada no limite padrão da Vercel no meio do polling — o post
+// pode já estar publicado no Instagram enquanto o painel mostra erro.
+export const maxDuration = 300;
 
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -269,6 +275,7 @@ export async function GET(request: Request) {
         await recordPublishPending(post.id);
         continue;
       }
+      Sentry.captureException(err);
       const message =
         err instanceof PublishError
           ? err.message

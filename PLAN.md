@@ -564,6 +564,33 @@ Decisão do Victor: migrar as 7 rotas restantes (`drive-sync`, `cutpro-pipeline`
 
 ---
 
+## M24 — Correções da auditoria de produto de 29/07/2026 (Fase 0 + Fase 1 + instrumentação Sentry) ✅
+
+Conjunto de correções pequenas e majoritariamente independentes levantadas pela auditoria de produto de 29/07/2026 (`docs/2026-07-29-auditoria-produto.md`), executadas na sessão seguinte.
+
+**Fase 0 — risco alto, esforço mínimo:**
+- `export const maxDuration = 300;` adicionado nos 3 crons que ainda não tinham (`publish-scheduled`, `cutpro-pipeline`, `drive-sync`) — mesmo padrão de `generate-copy`/`generate-video-art`. Sem isso, uma chamada externa lenta (polling do Zernio, upload pro Cut.Pro, download de vídeo grande do Drive) podia derrubar a função no meio sem gravar erro; o caso mais grave era `publish-scheduled` mostrando "Publicando..." indefinidamente enquanto o post já tinha sido publicado de verdade no Instagram.
+- `lib/posts/pendingCopy.ts` (`listPostsPendingCopy`) ganhou `.neq("content_source", "n8n")` — mesmo padrão já aplicado em `cutpro-pipeline/route.ts` (`fetchEligibleItems`) na semana anterior (ver correção do bug de corrida real documentado acima, seção "T1/T3 — fechamento real"). Evita que a geração de copy nativa sobrescreva um post que o n8n ainda vai legendar sozinho.
+- `npm audit fix` + `npm install next@16.2.12` corrigiram os CVEs high de Next (SSRF em Server Actions/rewrites, bypass de middleware com Turbopack). `postcss`/`sharp` continuavam vulneráveis mesmo depois (dependências internas do próprio pacote `next`, não resolvidas por semver normal) — corrigido via `overrides` no `package.json` forçando `postcss@^8.5.24`/`sharp@^0.35.3`. Resíduo aceito: `brace-expansion` ainda aparece via `eslint`/`eslint-config-next` (exigiria bump major do eslint, fora de escopo, dev-only) e via `googleapis`→`gaxios`→`rimraf` (tooling legado, não exposto em runtime).
+
+**Fase 1 — fecha os "trava sem avisar" na UX:**
+- Badge de `video_render_status` adicionado em `components/kanban/post-card.tsx` ("Gerando arte..." + barra indeterminada quando `processing`) — campo adicionado ao tipo `Post` (`lib/types/post.ts`), já vinha no `select("*")` de `listPosts`. **Não** adicionado em `components/drive/drive-item-card.tsx`: `drive_items` nunca teve essa coluna (só existe em `posts`, migration `0014`, motor Remotion do M14) — confirmado por grep nas migrations antes de escrever código morto.
+- `components/calendar/daily-slots-panel.tsx` virou client component com validação explícita de horário antes do submit (antes, um horário mal formatado como "9:00" era filtrado em silêncio pela regex do server action e sumia da lista sem aviso).
+- `components/admin/contas-panel.tsx`: os 3 forms (adicionar via Zernio, salvar `zernio_account_id`, excluir conta) migrados pra `useActionState` + `SubmitButton`/`ConfirmSubmitButton` (novo arquivo `components/admin/contas-forms.tsx`) — loading visível e erro na tela em vez de só `console.error`. `ConfirmSubmitButton` ganhou `useFormStatus` (spinner + `pendingLabel`), antes só tinha o `window.confirm`.
+- `lib/posts/pendingVideoArt.ts` (`listPostsPendingVideoArt`) ganhou filtro excluindo `edit_status` em transição (`CUTPRO_BUSY_EDIT_STATUSES`) — evita que o pipeline Remotion nativo pegue em paralelo um post que o usuário mandou pro fluxo Cut.Pro.
+- `lib/cutpro/pipeline.ts` (`advanceCutProEdit`) ganhou claim atômico antes de processar qualquer item: como os 3 estados transitórios do Cut.Pro (`enviando`/`clipando`/`renderizando`) não têm um sub-estado "claimado" pra fazer CAS por valor (diferente de `poll-video-render`/`daily-schedule`, que fazem CAS numa transição de status real), o claim usa `updated_at` como campo de corrida — o trigger `set_updated_at` (migrations `0002`/`0019`) grava `now()` em qualquer UPDATE da linha, então uma segunda execução concorrente cujo `updated_at` lido já ficou desatualizado afeta 0 linhas e nunca chega a chamar a API do Cut.Pro (evita pagar o Cut.Pro duas vezes pelo mesmo item).
+
+**Instrumentação Sentry** (conectado como MCP numa sessão anterior, mas o app ainda não reportava nada de verdade):
+- `@sentry/nextjs` instalado; `instrumentation.ts` + `sentry.server.config.ts` na raiz — só server-side (Node.js runtime), sem client-side/source maps por enquanto, `SENTRY_DSN` documentada (comentada) em `.env.example`. `next.config.ts` **não** foi envolvido com `withSentryConfig` (não precisa pra captura básica server-side; deixado de fora de propósito, é só pra source maps/tunneling).
+- `Sentry.captureException` adicionado nas 9 rotas de cron (`app/api/cron/*/route.ts`) — nos `catch(err)` reais onde existiam (`publish-scheduled`, `poll-video-render`, `generate-video-art`, `generate-copy`, `generate-art`, `collect-metrics`, `drive-sync` × 2) e, nas 2 rotas sem `catch` (`cutpro-pipeline`, `daily-schedule`), nos branches de erro de query do Supabase que já só faziam `console.error` — pra fechar a cobertura das 9 rotas por completo.
+- `Sentry.captureException` adicionado nos 3 pontos que a auditoria de UX flagrou como "erro engolido": `lib/calendar/actions.ts` (`updateDailyPostSlots`), `components/admin/contas-actions.ts` (as 3 actions) e `lib/templates/actions.ts` (`duplicateTemplate`) — comportamento de cada um preservado (continuam gravando erro no banco/console como antes), só adiciona a captura extra.
+
+**Fora de escopo desta sessão (explícito)**: Fase 2 da auditoria (testes automatizados); toggle "Leaked Password Protection" do Supabase Auth (manual, dashboard); nó de erro faltando na geração de legenda do workflow n8n (já corrigido pelo Victor direto no n8n, fora do código deste repo).
+
+`npx tsc --noEmit`, `npm run lint` e `npm run build` rodaram limpos após todas as mudanças.
+
+---
+
 ## Cronograma e custos revisados (M11–M16)
 
 | Semana | Entrega | Custo mensal acumulado |

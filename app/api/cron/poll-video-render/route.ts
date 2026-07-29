@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getRenderJobStatus, RenderWorkerError } from "@/lib/renderWorker/client";
 
@@ -86,6 +87,7 @@ export async function GET(request: Request) {
 
       resolved += 1;
     } catch (err) {
+      Sentry.captureException(err);
       const message = err instanceof RenderWorkerError ? err.message : "Erro inesperado ao resolver o render de vídeo.";
       await supabase
         .from("posts")

@@ -68,6 +68,10 @@ export interface Post {
   rendered_art_url: string | null;
   /** Preenchido pelo M5 quando a geração de arte falha — nunca falha em silêncio. */
   art_generation_error: string | null;
+  /** Estado do motor de templates de vídeo (M14, Remotion) — só em posts de
+   * vídeo enviados pra fila de render nativa; null fora desse fluxo. Escrito
+   * por app/api/cron/generate-video-art e app/api/cron/poll-video-render. */
+  video_render_status: "processing" | "done" | "error" | null;
   /** Preenchido quando a notificação de SLA falha — nunca falha em silêncio. */
   notification_error: string | null;
   /** Preenchido pelo M7 quando o post é publicado com sucesso via Zernio. */

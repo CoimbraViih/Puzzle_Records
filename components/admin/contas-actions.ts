@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
 
 import { createClient } from "@/lib/supabase/server";
 import { SOCIAL_NETWORKS, type SocialNetwork } from "@/lib/types/social-account";
@@ -14,7 +15,10 @@ export type SocialAccountFormState = { error?: string } | undefined;
  * em PLAN.md. Idempotente: se esse zernio_account_id já estiver associado a
  * alguma conta, não duplica.
  */
-export async function addSocialAccountFromZernio(formData: FormData): Promise<void> {
+export async function addSocialAccountFromZernio(
+  _prevState: SocialAccountFormState,
+  formData: FormData
+): Promise<SocialAccountFormState> {
   const network = String(formData.get("network") ?? "") as SocialNetwork;
   const handle = String(formData.get("handle") ?? "").trim();
   const displayName = String(formData.get("display_name") ?? "").trim();
@@ -26,7 +30,7 @@ export async function addSocialAccountFromZernio(formData: FormData): Promise<vo
       handle,
       zernioAccountId,
     });
-    return;
+    return { error: "Dados incompletos vindos do Zernio — recarregue a página e tente novamente." };
   }
 
   const supabase = await createClient();
@@ -38,7 +42,7 @@ export async function addSocialAccountFromZernio(formData: FormData): Promise<vo
     .maybeSingle();
   if (existing) {
     revalidatePath("/admin");
-    return;
+    return undefined;
   }
 
   const { error } = await supabase.from("social_accounts").insert({
@@ -50,8 +54,11 @@ export async function addSocialAccountFromZernio(formData: FormData): Promise<vo
 
   if (error) {
     console.error("[admin/contas] falha ao criar conta a partir do Zernio:", error);
+    Sentry.captureException(error);
+    return { error: "Não foi possível adicionar a conta a partir do Zernio." };
   }
   revalidatePath("/admin");
+  return undefined;
 }
 
 export async function createSocialAccount(
@@ -86,8 +93,9 @@ export async function createSocialAccount(
 
 export async function updateZernioAccountId(
   accountId: string,
+  _prevState: SocialAccountFormState,
   formData: FormData
-) {
+): Promise<SocialAccountFormState> {
   const zernioAccountId =
     (formData.get("zernio_account_id") as string)?.trim() || null;
 
@@ -99,18 +107,25 @@ export async function updateZernioAccountId(
 
   if (error) {
     console.error("Falha ao atualizar zernio_account_id:", accountId, error);
+    Sentry.captureException(error);
+    return { error: "Não foi possível salvar o ID do Zernio." };
   }
   revalidatePath("/admin");
+  return undefined;
 }
 
 export async function deleteSocialAccount(
   accountId: string,
+  _prevState: SocialAccountFormState,
   _formData: FormData
-) {
+): Promise<SocialAccountFormState> {
   const supabase = await createClient();
   const { error } = await supabase.from("social_accounts").delete().eq("id", accountId);
   if (error) {
     console.error("Falha ao excluir conta social:", error);
+    Sentry.captureException(error);
+    return { error: "Não foi possível excluir a conta social." };
   }
   revalidatePath("/admin");
+  return undefined;
 }

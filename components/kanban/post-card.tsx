@@ -237,6 +237,15 @@ export function PostCard({
         </p>
       )}
 
+      {post.video_render_status === "processing" && (
+        <div className="flex flex-col gap-1">
+          <p className="text-xs text-muted-foreground">Gerando arte...</p>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-primary/50" />
+          </div>
+        </div>
+      )}
+
       {post.publish_error && (
         <p className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
           Falha ao publicar: {post.publish_error}

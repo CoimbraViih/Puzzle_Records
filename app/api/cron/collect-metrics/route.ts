@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 import { getPublishingProvider, PublishError } from "@/lib/publishing";
 import {
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
       await upsertPostMetrics(post.id, metrics);
       collected += 1;
     } catch (err) {
+      Sentry.captureException(err);
       const message =
         err instanceof PublishError
           ? err.message

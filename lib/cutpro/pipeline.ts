@@ -35,6 +35,10 @@ export interface CutProEditableRow {
    * (migration 0030) — null antes da migration ser aplicada em produção ou
    * antes do primeiro ciclo de polling gravar um valor. */
   cutpro_render_progress: number | null;
+  /** Usado só pro claim atômico em advanceCutProEdit (CAS via timestamp,
+   * já que não há um sub-estado "claimado" separado de enviando/clipando/
+   * renderizando) — não é exibido em nenhuma UI. */
+  updated_at: string;
 }
 
 function extensionFromPath(path: string): string {
@@ -75,6 +79,34 @@ export async function advanceCutProEdit(
   item: CutProEditableRow
 ): Promise<void> {
   const cutpro = getCutProProvider();
+
+  // Claim atômico: duas execuções sobrepostas do cron cutpro-pipeline podem
+  // pegar o mesmo item "enviando"/"clipando"/"renderizando" na mesma busca e
+  // processar em paralelo, pagando o Cut.Pro duas vezes pelo mesmo passo
+  // (achado da auditoria de 29/07/2026). Sem um sub-estado "claimado"
+  // separado dos 3 estados transitórios, o CAS usa updated_at: o trigger
+  // set_updated_at (migrations 0002/0019) grava now() em QUALQUER UPDATE da
+  // linha, mesmo reescrevendo o mesmo edit_status — então esse update sempre
+  // muda updated_at, e uma segunda execução concorrente cujo `item.updated_at`
+  // já ficou desatualizado (por ter perdido a corrida pela linha) afeta 0
+  // linhas abaixo e nunca chega a chamar a API do Cut.Pro.
+  const { data: claimed, error: claimError } = await supabase
+    .from(table)
+    .update({ edit_status: item.edit_status })
+    .eq("id", item.id)
+    .eq("edit_status", item.edit_status)
+    .eq("updated_at", item.updated_at)
+    .select("id");
+
+  if (claimError) {
+    console.error(`[cutpro-pipeline] falha ao tentar claim de ${table} ${item.id}:`, claimError);
+    return;
+  }
+  if (!claimed || claimed.length === 0) {
+    // Outra execução já está processando este item (ou já avançou pra outro
+    // estado) entre a busca e aqui — não duplica o trabalho nem a cobrança.
+    return;
+  }
 
   try {
     if (item.edit_status === "enviando") {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { listPostsPendingArt } from "@/lib/posts/pendingArt";
 import { renderArt, ArtRenderError } from "@/lib/renderer/renderArt";
@@ -50,6 +51,7 @@ export async function GET(request: Request) {
       }
       generated += 1;
     } catch (err) {
+      Sentry.captureException(err);
       const message = err instanceof ArtRenderError ? err.message : "Erro inesperado ao gerar a arte.";
       await recordArtError(post.id, message);
     }

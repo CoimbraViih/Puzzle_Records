@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
@@ -133,6 +134,7 @@ export async function GET(request: Request) {
           ? err.message
           : "Falha ao gerar manchete/legenda via OpenAI.";
       console.error("Erro na geração de IA para o post:", post.id, err);
+      Sentry.captureException(err);
       await recordCopyGenerationError(supabase, post.id, message);
     }
   }
