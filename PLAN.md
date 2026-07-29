@@ -560,6 +560,7 @@ Decisão do Victor: migrar as 7 rotas restantes (`drive-sync`, `cutpro-pipeline`
 - Validado com ~20 execuções reais consecutivas (71–98) sem nenhum erro, cobrindo múltiplos ciclos de 5min e pelo menos 2 ciclos completos de 30min (incluindo o que confirmou o fix do `collect-metrics`).
 - `.github/workflows/cron-trigger.yml` esvaziado: `schedule` removido, fica só `workflow_dispatch` manual (arquivo mantido de propósito como fallback documentado, não apagado — `CRON_SECRET`/`SITE_URL` continuam configurados nos secrets/vars do repo sem precisar mexer). O job manual chama as 9 rotas (antes só tinha 6 — as 2 que saíram em 22/07 foram reincluídas no fallback manual pra ele ficar completo).
 - `npx tsc --noEmit`, `npx eslint` e `npm run build` rodaram limpos após o fix do `cutpro-pipeline` (única mudança de código TypeScript deste fechamento).
+- Workflow `CY4247mhDrxvBgfi` ("Puzzle Records — Drive → Instagram", o que edita vídeo de verdade na Cut.Pro) reativado (`publish_workflow`) depois de confirmar o fix do bug de corrida em produção — estava desativado desde o fechamento anterior desta sessão, justamente pra evitar repetir o problema dos 2 posts órfãos.
 
 ---
 
