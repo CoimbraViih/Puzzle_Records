@@ -30,10 +30,23 @@ async function fetchEligibleItems(
       ? "id, filename, media_storage_path, edit_status, cutpro_template_id, cutpro_video_id, cutpro_submission_id, cutpro_clip_id, cutpro_render_id"
       : "id, filename:media_url, media_storage_path:media_url, edit_status, cutpro_template_id, cutpro_video_id, cutpro_submission_id, cutpro_clip_id, cutpro_render_id";
 
-  const { data, error } = await supabase
+  let query = supabase
     .from(table)
     .select(selectColumns)
-    .in("edit_status", TRANSITIONAL_STATUSES)
+    .in("edit_status", TRANSITIONAL_STATUSES);
+
+  // Posts do workflow n8n "Puzzle Records — Drive → Instagram" (content_source
+  // "n8n") já chamam a Cut.Pro diretamente por conta própria (bytes enviados
+  // sem passar pelo Supabase Storage, ver docs/CLAUDE.md) — nunca preenchem
+  // cutpro_template_id porque não usam esse fluxo nativo. Sem esse filtro,
+  // este cron pegava esses posts, não achava template, e gravava
+  // "Item sem template Cut.Pro selecionado." por cima de uma edição que já
+  // estava em andamento no n8n (bug real de produção, M23).
+  if (table === "posts") {
+    query = query.neq("content_source", "n8n");
+  }
+
+  const { data, error } = await query
     .order("updated_at", { ascending: true })
     .limit(10);
 
