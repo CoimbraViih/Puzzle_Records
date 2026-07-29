@@ -1,50 +1,45 @@
-name: Disparar crons do painel
+name: Disparar crons do painel (desativado — ver M23/T3)
 
-# Substitui o Vercel Cron (vercel.json), removido porque o plano Hobby só
+# Substituía o Vercel Cron (vercel.json), removido porque o plano Hobby só
 # permite 2 cron jobs por projeto, no máximo 1x por dia -- o app precisa de
-# 8 rotas, a maioria a cada 5 ou 30 minutos. Ver docs/DEPLOY.md e PLAN.md
-# (M11) para o contexto completo dessa decisão e o risco aceito de limite de
-# 60s por função no Hobby (generate-copy/generate-video-art, que processam
-# vídeo, podem estourar esse limite em clipes maiores -- migrar pro plano
-# Pro da Vercel remove os dois limites de uma vez, se isso virar dor real).
+# 9 rotas, a maioria a cada 5 ou 30 minutos. Ver docs/DEPLOY.md e PLAN.md
+# (M11) para o contexto completo dessa decisão.
 #
-# GitHub Actions não garante o minuto exato de disparo de um schedule sob
-# carga (mesmo aviso que o Vercel Cron já tinha) -- aceitável pro estágio
-# atual do projeto, mesmo padrão de tolerância já usado nos outros crons.
+# M23/T3 (22/07/2026): publish-scheduled e daily-schedule saíram primeiro
+# desta lista -- o GitHub Actions estava throttlado sob carga (disparando
+# de 1 a 3h em vez do intervalo configurado), o que atrasava publicação de
+# posts já aprovados. As duas rotas passaram a ser chamadas pelo relógio de
+# um workflow n8n self-hosted dedicado.
 #
-# M23/T3 (22/07/2026): publish-scheduled e daily-schedule saíram desta lista
-# -- o GitHub Actions estava throttlado sob carga (disparando de 1 a 3h em
-# vez do intervalo configurado), o que atrasava publicação de posts já
-# aprovados. As duas rotas passaram a ser chamadas pelo relógio do n8n
-# self-hosted (workflow "Puzzle Records — Crons de publicação", id
-# rKHuyk9Sgr0CMLch, ainda em draft/não ativado -- ver PLAN.md M23). As
-# demais 6 rotas continuam aqui.
+# 29/07/2026: as 7 rotas restantes (drive-sync, cutpro-pipeline,
+# generate-copy, generate-art, generate-video-art, poll-video-render,
+# collect-metrics) saíram também -- decisão do Victor de tirar o GitHub
+# Actions da jogada por completo. O mesmo workflow n8n self-hosted
+# ("Puzzle Records — Crons de publicação", id rKHuyk9Sgr0CMLch) foi
+# expandido pra chamar as 9 rotas (5min: publish-scheduled, drive-sync,
+# cutpro-pipeline, generate-copy, generate-art, generate-video-art,
+# poll-video-render; 30min: daily-schedule, collect-metrics), validado com
+# execuções reais rodando establemente antes desta mudança.
+#
+# O schedule trigger foi removido (fica só workflow_dispatch manual) --
+# arquivo mantido de propósito (não apagado) como fallback documentado,
+# caso seja preciso reativar o disparo automático por aqui de novo algum
+# dia. CRON_SECRET/SITE_URL continuam configurados nos secrets/vars do
+# repo, sem necessidade de mexer neles pra isso.
 on:
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
 jobs:
   trigger:
     runs-on: ubuntu-latest
     steps:
-      - name: Checar se é ciclo de 30 minutos
-        id: minute
-        run: |
-          minute=$(date -u +%M)
-          if [ "$((10#$minute % 30))" -eq 0 ]; then
-            echo "is_half_hour=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_half_hour=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Chamar crons de 5 em 5 minutos
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SITE_URL: ${{ vars.SITE_URL }}
         run: |
           failed=0
-          for path in drive-sync cutpro-pipeline generate-copy generate-art generate-video-art poll-video-render; do
+          for path in publish-scheduled drive-sync cutpro-pipeline generate-copy generate-art generate-video-art poll-video-render; do
             echo "== $path =="
             body=$(curl -sS -w "\nstatus=%{http_code}" \
               -H "Authorization: Bearer $CRON_SECRET" \
@@ -59,13 +54,12 @@ jobs:
           exit $failed
 
       - name: Chamar crons de 30 em 30 minutos
-        if: github.event_name == 'workflow_dispatch' || steps.minute.outputs.is_half_hour == 'true'
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SITE_URL: ${{ vars.SITE_URL }}
         run: |
           failed=0
-          for path in collect-metrics; do
+          for path in daily-schedule collect-metrics; do
             echo "== $path =="
             body=$(curl -sS -w "\nstatus=%{http_code}" \
               -H "Authorization: Bearer $CRON_SECRET" \
